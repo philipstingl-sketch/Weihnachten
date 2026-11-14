@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="description" content="Ein kleines Stück Weihnachten, nur für dich." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Für Dich" />
+    <title>Für Dich</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9D%A4%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: { ink: '#09090b', rose: '#f43f5e', blush: '#fda4af' },
+            fontFamily: { sans: ['DM Sans', 'sans-serif'], display: ['Playfair Display', 'serif'] }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./style.css?v=25" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+    <script defer src="./app.js?v=35"></script>
+  </head>
+  <body class="min-h-screen bg-ink font-sans text-white antialiased">
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <div class="app-shell">
+      <header class="app-header flex items-center justify-between">
+        <a class="brand flex items-center gap-3" href="#wrapped" aria-label="Für Dich – Startseite" data-tab-link="wrapped">
+          <span class="brand-mark grid place-items-center" aria-hidden="true"><i data-lucide="heart"></i></span>
+          <span>
+            <span class="brand-kicker block">EIN KLEINES GESCHENK</span>
+            <span class="brand-name block font-display">Für Dich</span>
+          </span>
+        </a>
+        <span class="header-note" aria-label="Mit Liebe gemacht"><i data-lucide="sparkle"></i></span>
+      </header>
+
+      <main id="main-content" class="main-content" tabindex="-1">
+        <section id="wrapped" class="tab-panel tab-section is-active active" data-panel="wrapped" aria-labelledby="wrapped-title">
+          <div id="wrapped-story" class="wrapped-story" aria-label="Unser Beziehungs-Wrapped"></div>
+        </section>
+
+        <section id="dates" class="tab-panel tab-section" data-panel="dates" aria-labelledby="dates-title" hidden>
+          <div class="eyebrow"><span class="eyebrow-line"></span> ZEIT NUR FÜR UNS</div>
+          <h1 id="dates-title" class="page-title font-display"></h1>
+          <p id="dates-description" class="page-intro"></p>
+          <article class="glass-card date-wheel-card">
+            <div class="module-icon rose-icon"><i data-lucide="sparkles" aria-hidden="true"></i></div>
+            <span id="wheel-heading" class="pill"></span>
+            <canvas id="date-wheel" class="date-wheel" aria-label="Glücksrad mit Date-Ideen"></canvas>
+            <button id="spin-button" class="action-button" type="button"><i data-lucide="rotate-cw" aria-hidden="true"></i> Drehen</button>
+            <p id="wheel-status" class="inline-status" role="status" aria-live="polite"></p>
+          </article>
+          <div class="coupon-heading"><span id="coupon-heading" class="pill"></span><h2 id="coupon-subheading" class="section-title font-display"></h2></div>
+          <div id="coupon-grid" class="coupon-grid"></div>
+        </section>
+
+        <section id="game" class="tab-panel tab-section" data-panel="game" aria-labelledby="game-title" hidden>
+          <div class="eyebrow"><span class="eyebrow-line"></span> KLEINE AUSZEIT</div>
+          <h1 id="game-title" class="page-title font-display"></h1>
+          <p id="game-description" class="page-intro"></p>
+          <article class="glass-card memory-game-card">
+            <div class="memory-toolbar">
+              <div class="memory-progress-label"><i data-lucide="heart" aria-hidden="true"></i><span id="memory-progress-label">GEFUNDENE PAARE</span><strong id="memory-progress">0 / 8</strong></div>
+              <button id="memory-restart" class="memory-restart" type="button"><i data-lucide="shuffle" aria-hidden="true"></i> Neu mischen</button>
+            </div>
+            <p id="memory-status" class="memory-status" role="status" aria-live="polite"></p>
+            <div id="memory-grid" class="memory-grid" aria-label="Foto-Memory mit gemeinsamen Erinnerungen"></div>
+          </article>
+          <article id="memory-finish" class="glass-card memory-finish" hidden>
+            <span class="pill">KLEINER BONUS</span>
+            <h2 id="memory-finish-title" class="card-title font-display"></h2>
+            <p id="memory-finish-copy" class="card-copy"></p>
+            <p id="memory-bonus-copy" class="card-copy memory-bonus-copy"></p>
+            <button id="memory-play-again" class="action-button" type="button">Nochmal spielen</button>
+          </article>
+        </section>
+
+        <section id="tresor" class="tab-panel tab-section" data-panel="tresor" aria-labelledby="tresor-title" hidden>
+          <div class="eyebrow"><span class="eyebrow-line"></span> WENN DU MICH BRAUCHST</div>
+          <h1 id="tresor-title" class="page-title font-display"></h1>
+          <p id="tresor-description" class="page-intro"></p>
+          <div id="treasure-grid" class="treasure-grid"></div>
+        </section>
+
+        <section id="karte" class="tab-panel tab-section" data-panel="karte" aria-labelledby="karte-title" hidden>
+          <div class="eyebrow"><span class="eyebrow-line"></span> UNSERE ORTE</div>
+          <h1 id="karte-title" class="page-title font-display"></h1>
+          <p id="karte-description" class="page-intro"></p>
+          <div id="memory-map" class="memory-map" role="application" aria-label="Interaktive Weltkarte unserer gemeinsamen Erinnerungsorte"></div>
+          <p id="map-fallback" class="map-fallback" hidden></p>
+        </section>
+
+        <section id="album" class="tab-panel tab-section" data-panel="album" aria-labelledby="album-title" hidden>
+          <div class="eyebrow"><span class="eyebrow-line"></span> UNSERE ZEIT ZUSAMMEN</div>
+          <h1 id="album-title" class="page-title font-display">Unser <em>Fotoalbum.</em></h1>
+          <p id="album-description" class="page-intro"></p>
+          <audio id="album-song-audio" src="assets/audio/im-naechsten-leben.m4a" preload="none" playsinline webkit-playsinline hidden></audio>
+          <button id="album-song-retry" class="album-song-retry" type="button" aria-label="Albumton starten" hidden><i data-lucide="volume-2" aria-hidden="true"></i><span>Ton starten</span></button>
+          <div id="album-content" class="album-content"></div>
+          <div id="album-tools-parking" hidden>
+            <section id="album-upload-panel" class="album-upload-panel" aria-labelledby="album-upload-title">
+              <div class="album-upload-heading">
+                <span class="album-upload-icon"><i data-lucide="image-plus" aria-hidden="true"></i></span>
+                <div><h2 id="album-upload-title">Bilder hinzufügen</h2><p>Wähle Fotos von deinem Handy. Datum und GPS werden übernommen, wenn sie im Bild gespeichert sind.</p></div>
+              </div>
+              <label class="action-button album-pick-button" for="album-file-input"><i data-lucide="images" aria-hidden="true"></i><span>Fotos auswählen</span></label>
+              <input id="album-file-input" class="sr-only" type="file" accept="image/*" multiple />
+              <button id="album-delete-mode-button" class="album-delete-mode-button" type="button"><i data-lucide="trash-2" aria-hidden="true"></i><span>Fotos löschen</span></button>
+              <div id="album-delete-controls" class="album-delete-controls" hidden>
+                <span id="album-delete-count">0 ausgewählt</span>
+                <div><button id="album-delete-confirm" class="album-delete-confirm" type="button" disabled>Ausgewählte löschen</button><button id="album-delete-cancel" class="album-delete-cancel" type="button">Abbrechen</button></div>
+              </div>
+              <p class="album-upload-note">Fehlende Angaben kannst du vor dem Speichern pro Foto eintragen. Für einen Karten-Pin braucht es GPS-Koordinaten; du kannst sie ergänzen oder den Handy-Standort verwenden. Fotos bleiben auf diesem Gerät gespeichert.</p>
+              <div id="album-upload-queue" class="album-upload-queue" hidden>
+                <div id="album-upload-items" class="album-upload-items"></div>
+                <button id="album-save-uploads" class="action-button album-save-uploads" type="button"><i data-lucide="heart" aria-hidden="true"></i><span>Ins Album übernehmen</span></button>
+              </div>
+              <p id="album-upload-status" class="album-upload-status" role="status" aria-live="polite"></p>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Hauptnavigation">
+        <button class="nav-item nav-btn is-active active" type="button" data-tab="wrapped" data-target="wrapped" aria-controls="wrapped" aria-current="page"><i data-lucide="sparkles"></i><span>Wrapped</span></button>
+        <button class="nav-item nav-btn" type="button" data-tab="dates" data-target="dates" aria-controls="dates"><i data-lucide="ticket"></i><span>Dates</span></button>
+        <button class="nav-item nav-btn" type="button" data-tab="game" data-target="game" aria-controls="game"><i data-lucide="gamepad-2"></i><span>Game</span></button>
+        <button class="nav-item nav-btn" type="button" data-tab="tresor" data-target="tresor" aria-controls="tresor"><i data-lucide="lock-keyhole"></i><span>Tresor</span></button>
+        <button class="nav-item nav-btn" type="button" data-tab="karte" data-target="karte" aria-controls="karte"><i data-lucide="map-pin"></i><span>Karte</span></button>
+        <button class="nav-item nav-btn" type="button" data-tab="album" data-target="album" aria-controls="album"><i data-lucide="images"></i><span>Album</span></button>
+      </nav>
+      <div id="app-status" class="sr-only" role="status" aria-live="polite"></div>
+
+      <dialog id="date-modal" class="love-modal">
+        <div class="modal-content">
+          <button class="modal-close" type="button" data-close-modal aria-label="Schließen"><i data-lucide="x"></i></button>
+          <div class="modal-heart">♥</div>
+          <span id="date-modal-eyebrow" class="pill"></span>
+          <h2 id="date-result" class="modal-title font-display"></h2>
+          <p id="date-result-copy" class="card-copy"></p>
+          <button id="date-modal-confirm" class="action-button" type="button" data-close-modal><i data-lucide="heart"></i></button>
+        </div>
+      </dialog>
+
+      <dialog id="treasure-modal" class="love-modal">
+        <div class="modal-content treasure-modal-content">
+          <button class="modal-close" type="button" data-close-modal aria-label="Schließen"><i data-lucide="x"></i></button>
+          <div id="treasure-lock-view">
+            <div class="modal-heart">♥</div>
+            <span id="treasure-modal-eyebrow" class="pill"></span>
+            <h2 id="treasure-modal-title" class="modal-title font-display"></h2>
+            <p id="treasure-modal-prompt" class="card-copy"></p>
+            <p id="treasure-countdown" class="treasure-countdown" hidden></p>
+            <form id="treasure-answer-form" class="treasure-answer-form" hidden>
+              <label class="sr-only" for="treasure-answer">Deine Antwort</label>
+              <input id="treasure-answer" type="text" autocomplete="off" />
+              <button id="treasure-answer-button" class="action-button" type="submit"><i data-lucide="key-round"></i></button>
+              <p id="treasure-error" class="form-error" role="status"></p>
+            </form>
+          </div>
+          <div id="treasure-letter-view" hidden>
+            <span id="treasure-letter-eyebrow" class="pill"></span>
+            <h2 id="treasure-letter-title" class="modal-title font-display"></h2>
+            <p id="treasure-letter" class="treasure-letter"></p>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="album-photo-modal" class="love-modal album-photo-modal">
+        <div class="modal-content">
+          <button class="modal-close" type="button" data-close-modal aria-label="Schließen"><i data-lucide="x"></i></button>
+          <img id="album-modal-image" class="album-modal-image" alt="" />
+          <video id="album-modal-video" class="album-modal-video" controls playsinline preload="metadata" hidden></video>
+          <span id="album-modal-date" class="pill"></span>
+          <h2 id="album-modal-caption" class="modal-title font-display"></h2>
+          <p id="album-modal-location" class="album-photo-location" hidden></p>
+          <form id="album-date-form" class="album-date-form" hidden>
+            <label for="album-date-input">Aufnahmedatum nachtragen</label>
+            <p class="album-date-help">Wähle den Tag aus. Das Bild wird danach der passenden Woche zugeordnet.</p>
+            <div class="album-date-form-row">
+              <input id="album-date-input" class="album-date-input" type="date" required />
+              <button id="album-date-save" class="action-button album-date-save" type="submit"><i data-lucide="calendar-check-2" aria-hidden="true"></i><span>Speichern</span></button>
+            </div>
+            <p id="album-date-status" class="album-date-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </dialog>
+    </div>
+  </body>
+</html>
