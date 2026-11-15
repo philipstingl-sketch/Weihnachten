@@ -660,6 +660,7 @@ const ALBUM_DATA = {
   undatedPageLabel: 'Weitere Erinnerungen',
   dateOverridesStorageKey: 'fuer-dich-album-date-overrides',
   deletedPhotosStorageKey: 'fuer-dich-album-deleted-photos',
+  deletedUploadedPhotosStorageKey: 'fuer-dich-album-deleted-uploaded-photos',
   databaseName: 'fuer-dich-album',
   dateSaveMessage: 'Gespeichert – das Bild wird einsortiert …',
   dateSaveError: 'Das Datum konnte in diesem Browser nicht gespeichert werden.',
@@ -687,7 +688,13 @@ const ALBUM_DATA = {
   }
 
   function writeRecord(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides'].includes(key)) {
+        window.__fuerDichSyncAlbumState?.();
+      }
+      return true;
+    }
     catch (_) { return false; }
   }
 
@@ -1338,6 +1345,161 @@ const ALBUM_DATA = {
     const albumObjectUrls = new Map();
     let albumDatabasePromise;
     let albumUploadQueue = [];
+    let albumRemoteState = null;
+    let albumCloudReady = false;
+    let albumCloudLoading = null;
+    let albumCloudSaveTimer = 0;
+    let albumCloudSaveQueue = Promise.resolve();
+    let albumCloudLastError = '';
+
+    function setAlbumSyncStatus(message, state = '') {
+      const indicator = document.querySelector('#album-sync-status');
+      if (!indicator) return;
+      indicator.textContent = message;
+      indicator.dataset.state = state;
+    }
+
+    function currentLocalAlbumState() {
+      return {
+        dateOverrides: readRecord(ALBUM_DATA.dateOverridesStorageKey),
+        deletedPhotos: readRecord(ALBUM_DATA.deletedPhotosStorageKey),
+        deletedUploadedPhotoIds: Object.keys(readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey)),
+        locationOverrides: readRecord('fuer-dich-album-location-overrides'),
+        uploadedPhotos: albumRemoteState?.uploadedPhotos || []
+      };
+    }
+
+    function applySharedAlbumState(state) {
+      localStorage.setItem(ALBUM_DATA.dateOverridesStorageKey, JSON.stringify(state.dateOverrides || {}));
+      localStorage.setItem(ALBUM_DATA.deletedPhotosStorageKey, JSON.stringify(state.deletedPhotos || {}));
+      localStorage.setItem('fuer-dich-album-location-overrides', JSON.stringify(state.locationOverrides || {}));
+      const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+      for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
+      localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
+    }
+
+    async function saveSharedAlbumStateNow() {
+      if (!albumCloudReady) return false;
+      const response = await fetch('/api/album/state', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentLocalAlbumState())
+      });
+      if (!response.ok) throw new Error('Albumänderungen konnten nicht synchronisiert werden.');
+      const result = await response.json();
+      if (albumRemoteState) albumRemoteState.updatedAt = result.updatedAt;
+      return true;
+    }
+
+    function scheduleSharedAlbumSave() {
+      if (!albumCloudReady) return;
+      setAlbumSyncStatus('Änderungen werden mit euren Geräten synchronisiert …', 'saving');
+      window.clearTimeout(albumCloudSaveTimer);
+      albumCloudSaveTimer = window.setTimeout(() => {
+        albumCloudSaveQueue = albumCloudSaveQueue
+          .then(() => saveSharedAlbumStateNow())
+          .then(() => {
+            albumCloudLastError = '';
+            setAlbumSyncStatus('Auf allen Geräten synchronisiert.', 'ready');
+          })
+          .catch(() => {
+            albumCloudLastError = 'Die Verbindung zum gemeinsamen Speicher ist gerade nicht möglich.';
+            setAlbumSyncStatus('Änderungen vorerst nur auf diesem Gerät gespeichert.', 'error');
+          });
+      }, 250);
+    }
+
+    window.__fuerDichSyncAlbumState = scheduleSharedAlbumSave;
+
+    async function uploadPhotoToSharedAlbum(photo) {
+      const form = new FormData();
+      form.set('id', photo.id);
+      form.set('file', photo.blob, photo.fileName || 'erinnerungsfoto');
+      form.set('capturedAt', photo.capturedAt || '');
+      form.set('locationName', photo.locationName || '');
+      form.set('latitude', photo.latitude ?? '');
+      form.set('longitude', photo.longitude ?? '');
+      form.set('addedAt', photo.addedAt || new Date().toISOString());
+      form.set('fileName', photo.fileName || 'erinnerungsfoto');
+      const response = await fetch('/api/album/photos', { method: 'POST', credentials: 'same-origin', body: form });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Das Foto konnte nicht in den gemeinsamen Speicher geladen werden.');
+      }
+      const result = await response.json();
+      if (!albumRemoteState) albumRemoteState = { uploadedPhotos: [] };
+      const photos = new Map((albumRemoteState.uploadedPhotos || []).map((item) => [item.id, item]));
+      photos.set(photo.id, result.photo);
+      albumRemoteState.uploadedPhotos = Array.from(photos.values());
+      return result.photo;
+    }
+
+    async function refreshSharedAlbumState(force = false) {
+      if (albumCloudReady && !force) return true;
+      if (albumCloudLoading) return albumCloudLoading;
+      if (force && albumCloudReady) {
+        if (albumCloudSaveTimer) {
+          window.clearTimeout(albumCloudSaveTimer);
+          albumCloudSaveTimer = 0;
+          await saveSharedAlbumStateNow().catch(() => {});
+        }
+        await albumCloudSaveQueue.catch(() => {});
+      }
+      setAlbumSyncStatus('Gemeinsamer Album-Speicher wird geprüft …', 'loading');
+      albumCloudLoading = (async () => {
+        const response = await fetch('/api/album/state', { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) {
+          albumCloudReady = false;
+          setAlbumSyncStatus('Cloud-Synchronisierung wird noch eingerichtet; Änderungen bleiben vorerst auf diesem Gerät.', 'error');
+          return false;
+        }
+        const remote = await response.json();
+        albumCloudLastError = '';
+        const local = currentLocalAlbumState();
+        if (!remote.exists) {
+          albumRemoteState = { ...remote, uploadedPhotos: [] };
+          await fetch('/api/album/state', {
+            method: 'PUT', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(local)
+          }).then((result) => {
+            if (!result.ok) throw new Error('Der gemeinsame Album-Speicher konnte nicht vorbereitet werden.');
+          });
+          albumRemoteState = { ...remote, ...local, exists: true };
+        } else {
+          albumRemoteState = remote;
+          applySharedAlbumState(remote);
+        }
+        albumCloudReady = true;
+
+        const tombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+        const remoteIds = new Set((albumRemoteState.uploadedPhotos || []).map((photo) => photo.id));
+        const localPhotos = await readUploadedPhotos().catch(() => []);
+        for (const photo of localPhotos) {
+          if (tombstones[photo.id]) {
+            await removeUploadedPhoto(photo.id).catch(() => {});
+            continue;
+          }
+          if (!remoteIds.has(photo.id)) {
+            try {
+              await uploadPhotoToSharedAlbum(photo);
+              remoteIds.add(photo.id);
+            } catch (_) {
+              albumCloudLastError = 'Mindestens ein Foto wartet noch auf die Synchronisierung.';
+            }
+          }
+        }
+        if (Object.keys(tombstones).length) await saveSharedAlbumStateNow().catch(() => {});
+        setAlbumSyncStatus(albumCloudLastError || 'Auf allen Geräten synchronisiert.', albumCloudLastError ? 'error' : 'ready');
+        return true;
+      })().catch(() => {
+        albumCloudReady = false;
+        setAlbumSyncStatus('Cloud-Synchronisierung gerade nicht erreichbar; Änderungen bleiben vorerst auf diesem Gerät.', 'error');
+        return false;
+      }).finally(() => { albumCloudLoading = null; });
+      return albumCloudLoading;
+    }
 
     function openAlbumDatabase() {
       if (albumDatabasePromise) return albumDatabasePromise;
@@ -1385,16 +1547,23 @@ const ALBUM_DATA = {
     }
 
     function uploadedPhotoUrl(photo) {
+      if (photo.remote) return '/api/album/photos/' + encodeURIComponent(photo.id);
       if (!albumObjectUrls.has(photo.id)) albumObjectUrls.set(photo.id, URL.createObjectURL(photo.blob));
       return albumObjectUrls.get(photo.id);
     }
 
     async function getAlbumPhotos() {
+      await refreshSharedAlbumState();
       const overrides = readRecord(ALBUM_DATA.dateOverridesStorageKey);
       const deletedPhotos = readRecord(ALBUM_DATA.deletedPhotosStorageKey);
       const locationOverrides = readRecord('fuer-dich-album-location-overrides');
       const staticPhotos = PHOTO_ALBUM_DATA.filter((photo) => !deletedPhotos[photo.src]).map((photo) => ({ ...photo, key: photo.src }));
-      const uploadedPhotos = await readUploadedPhotos().catch(() => []).then((photos) => photos.map((photo) => ({
+      const localUploads = await readUploadedPhotos().catch(() => []);
+      const localById = new Map(localUploads.map((photo) => [photo.id, photo]));
+      const remoteUploads = albumCloudReady ? (albumRemoteState?.uploadedPhotos || []).map((photo) => ({ ...photo, blob: localById.get(photo.id)?.blob, remote: true })) : [];
+      const remoteIds = new Set(remoteUploads.map((photo) => photo.id));
+      const allUploads = [...remoteUploads, ...localUploads.filter((photo) => !remoteIds.has(photo.id) && !readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey)[photo.id])];
+      const uploadedPhotos = allUploads.map((photo) => ({
         key: 'uploaded:' + photo.id,
         id: photo.id,
         src: uploadedPhotoUrl(photo),
@@ -1406,7 +1575,7 @@ const ALBUM_DATA = {
         latitude: photo.latitude,
         longitude: photo.longitude,
         uploaded: true
-      })));
+      }));
       return [...staticPhotos, ...uploadedPhotos].map((photo) => {
         const key = photo.key || photo.src;
         const manualDateValue = typeof overrides[key] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(overrides[key])
@@ -1774,13 +1943,22 @@ const ALBUM_DATA = {
         const allPhotos = await getAlbumPhotos();
         const photosToDelete = allPhotos.filter((photo) => albumDeleteSelection.has(photo.key));
         const deleted = readRecord(ALBUM_DATA.deletedPhotosStorageKey);
+        const uploadedTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
         photosToDelete.filter((photo) => !photo.uploaded).forEach((photo) => { deleted[photo.src] = true; });
+        photosToDelete.filter((photo) => photo.uploaded).forEach((photo) => { uploadedTombstones[photo.id] = true; });
         if (!writeRecord(ALBUM_DATA.deletedPhotosStorageKey, deleted)) throw new Error('Die Auswahl konnte nicht auf diesem Gerät gespeichert werden.');
+        if (!writeRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey, uploadedTombstones)) throw new Error('Die Auswahl konnte nicht auf diesem Gerät gespeichert werden.');
         for (const photo of photosToDelete.filter((item) => item.uploaded)) {
           await removeUploadedPhoto(photo.id);
           const url = albumObjectUrls.get(photo.id);
           if (url) URL.revokeObjectURL(url);
           albumObjectUrls.delete(photo.id);
+        }
+        if (albumCloudReady) {
+          window.clearTimeout(albumCloudSaveTimer);
+          await saveSharedAlbumStateNow().then(() => setAlbumSyncStatus('Löschungen wurden auf allen Geräten übernommen.', 'ready')).catch(() => {
+            setAlbumSyncStatus('Löschung lokal gespeichert; Cloud-Synchronisierung wartet auf Verbindung.', 'error');
+          });
         }
         albumDeleteSelection.clear();
         albumDeleteMode = false;
@@ -1962,6 +2140,7 @@ const ALBUM_DATA = {
         return {
           id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           file,
+          fileName: file.name,
           previewUrl: URL.createObjectURL(file),
           capturedAt: metadata.capturedAt || '',
           locationName: '',
@@ -1982,26 +2161,37 @@ const ALBUM_DATA = {
       if (!albumUploadQueue.length) return;
       button.disabled = true;
       status.textContent = 'Fotos werden im Album gespeichert …';
+      let allPhotosSynced = true;
       try {
+        await refreshSharedAlbumState();
         for (const item of albumUploadQueue) {
           const latitude = Number(item.latitude);
           const longitude = Number(item.longitude);
           const hasLocation = Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
-          await saveUploadedPhoto({
+          const savedPhoto = {
             id: item.id,
             blob: item.file,
+            fileName: item.file.name,
             caption: 'Ein Moment für uns',
             capturedAt: item.capturedAt || '',
             locationName: item.locationName.trim(),
             latitude: hasLocation ? latitude : null,
             longitude: hasLocation ? longitude : null,
             addedAt: new Date().toISOString()
-          });
+          };
+          await saveUploadedPhoto(savedPhoto);
+          if (albumCloudReady) {
+            try { await uploadPhotoToSharedAlbum(savedPhoto); }
+            catch (_) { allPhotosSynced = false; }
+          } else allPhotosSynced = false;
         }
         albumUploadQueue.forEach((item) => URL.revokeObjectURL(item.previewUrl));
         albumUploadQueue = [];
         renderAlbumUploadQueue();
-        status.textContent = 'Die Fotos wurden ins Album übernommen.';
+        status.textContent = allPhotosSynced
+          ? 'Die Fotos wurden gespeichert und mit euren Geräten synchronisiert.'
+          : 'Die Fotos wurden auf diesem Gerät gespeichert. Die Cloud-Synchronisierung wird noch eingerichtet.';
+        setAlbumSyncStatus(allPhotosSynced ? 'Auf allen Geräten synchronisiert.' : 'Fotos warten noch auf die Cloud-Synchronisierung.', allPhotosSynced ? 'ready' : 'error');
         albumPageIndex = 0;
         await renderAlbumPage();
         await refreshUploadedMapPhotos();
@@ -2190,7 +2380,13 @@ const ALBUM_DATA = {
       try {
         if (!uploadedPhotoLayer) uploadedPhotoLayer = window.L.layerGroup().addTo(memoryMap);
         uploadedPhotoLayer.clearLayers();
-        const photos = await readUploadedPhotos();
+        await refreshSharedAlbumState();
+        const localPhotos = await readUploadedPhotos();
+        const localById = new Map(localPhotos.map((photo) => [photo.id, photo]));
+        const remotePhotos = albumCloudReady ? (albumRemoteState?.uploadedPhotos || []).map((photo) => ({ ...photo, blob: localById.get(photo.id)?.blob, remote: true })) : [];
+        const remoteIds = new Set(remotePhotos.map((photo) => photo.id));
+        const tombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+        const photos = [...remotePhotos, ...localPhotos.filter((photo) => !remoteIds.has(photo.id) && !tombstones[photo.id])];
         const dateOverrides = readRecord(ALBUM_DATA.dateOverridesStorageKey);
         const points = [];
         photos.forEach((photo) => {
@@ -2338,7 +2534,9 @@ const ALBUM_DATA = {
         if (getDailyCouponState().day !== renderedCouponDay) renderCoupons();
       }
       if (event.detail.tab === 'karte') initializeMap();
-      if (event.detail.tab === 'album') renderAlbumPage();
+      if (event.detail.tab === 'album') {
+        refreshSharedAlbumState(true).then(() => renderAlbumPage());
+      }
       if (event.detail.tab === 'dates') document.querySelectorAll('.scratch-canvas:not([hidden])').forEach(setupScratchCanvas);
     });
 
@@ -2346,6 +2544,21 @@ const ALBUM_DATA = {
       if (activeTab === 'dates') drawWheel();
       if (memoryMap && activeTab === 'karte') memoryMap.invalidateSize(true);
       if (activeTab === 'dates') document.querySelectorAll('.scratch-canvas:not([hidden])').forEach(setupScratchCanvas);
+    });
+
+    window.setInterval(async () => {
+      if (document.hidden || !document.querySelector('#album')?.classList.contains('is-active') || !albumCloudReady) return;
+      const previousUpdate = albumRemoteState?.updatedAt;
+      if (await refreshSharedAlbumState(true) && albumRemoteState?.updatedAt !== previousUpdate) {
+        await renderAlbumPage();
+        if (activeTab === 'karte') await refreshUploadedMapPhotos();
+      }
+    }, 30000);
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.hidden || !document.querySelector('#album')?.classList.contains('is-active') || !albumCloudReady) return;
+      const previousUpdate = albumRemoteState?.updatedAt;
+      if (await refreshSharedAlbumState(true) && albumRemoteState?.updatedAt !== previousUpdate) await renderAlbumPage();
     });
 
     applyConfiguredCopy();

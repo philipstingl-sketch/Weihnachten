@@ -26,12 +26,12 @@
       };
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./style.css?v=25" />
+    <link rel="stylesheet" href="./style.css?v=26" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
-    <script defer src="./app.js?v=35"></script>
+    <script defer src="./app.js?v=36"></script>
   </head>
   <body class="min-h-screen bg-ink font-sans text-white antialiased">
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -109,6 +109,7 @@
           <div class="eyebrow"><span class="eyebrow-line"></span> UNSERE ZEIT ZUSAMMEN</div>
           <h1 id="album-title" class="page-title font-display">Unser <em>Fotoalbum.</em></h1>
           <p id="album-description" class="page-intro"></p>
+          <p id="album-sync-status" class="album-sync-status" role="status" aria-live="polite" data-state="loading">Gemeinsamer Album-Speicher wird geprüft …</p>
           <audio id="album-song-audio" src="assets/audio/im-naechsten-leben.m4a" preload="none" playsinline webkit-playsinline hidden></audio>
           <button id="album-song-retry" class="album-song-retry" type="button" aria-label="Albumton starten" hidden><i data-lucide="volume-2" aria-hidden="true"></i><span>Ton starten</span></button>
           <div id="album-content" class="album-content"></div>
@@ -125,7 +126,7 @@
                 <span id="album-delete-count">0 ausgewählt</span>
                 <div><button id="album-delete-confirm" class="album-delete-confirm" type="button" disabled>Ausgewählte löschen</button><button id="album-delete-cancel" class="album-delete-cancel" type="button">Abbrechen</button></div>
               </div>
-              <p class="album-upload-note">Fehlende Angaben kannst du vor dem Speichern pro Foto eintragen. Für einen Karten-Pin braucht es GPS-Koordinaten; du kannst sie ergänzen oder den Handy-Standort verwenden. Fotos bleiben auf diesem Gerät gespeichert.</p>
+              <p class="album-upload-note">Datum, Ort und neue Fotos werden mit dem privaten Album-Speicher synchronisiert, damit sie auf euren Geräten gleich sind.</p>
               <div id="album-upload-queue" class="album-upload-queue" hidden>
                 <div id="album-upload-items" class="album-upload-items"></div>
                 <button id="album-save-uploads" class="action-button album-save-uploads" type="button"><i data-lucide="heart" aria-hidden="true"></i><span>Ins Album übernehmen</span></button>
