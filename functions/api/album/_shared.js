@@ -8,6 +8,8 @@ export const emptyAlbumState = () => ({
   deletedPhotos: {},
   deletedUploadedPhotoIds: [],
   locationOverrides: {},
+  mapHiddenPlaces: {},
+  mapHiddenPhotoKeys: {},
   uploadedPhotos: [],
   updatedAt: new Date().toISOString()
 });
@@ -46,6 +48,8 @@ export async function readAlbumState(bucket) {
         deletedPhotos: isRecord(stored.deletedPhotos) ? stored.deletedPhotos : {},
         deletedUploadedPhotoIds: Array.isArray(stored.deletedUploadedPhotoIds) ? stored.deletedUploadedPhotoIds : [],
         locationOverrides: isRecord(stored.locationOverrides) ? stored.locationOverrides : {},
+        mapHiddenPlaces: isRecord(stored.mapHiddenPlaces) ? stored.mapHiddenPlaces : {},
+        mapHiddenPhotoKeys: isRecord(stored.mapHiddenPhotoKeys) ? stored.mapHiddenPhotoKeys : {},
         uploadedPhotos: Array.isArray(stored.uploadedPhotos) ? stored.uploadedPhotos : []
       },
       exists: true

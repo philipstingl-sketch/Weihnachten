@@ -142,6 +142,8 @@ const MAP_DATA = {
   sectionDescription: 'Unsere Orte auf einer weltweiten Satellitenkarte. Verschiebe und zoome, um eure Erinnerungen zu entdecken.',
   fallbackMessage: 'Die Karte konnte gerade nicht geladen werden. Bitte prüfe deine Internetverbindung.'
 };
+const MAP_HIDDEN_PLACES_KEY = 'fuer-dich-map-hidden-places';
+const MAP_HIDDEN_PHOTOS_KEY = 'fuer-dich-map-hidden-photo-keys';
 
 // GPS-Ortsgruppen aus 38 Fotos; Namen und Erinnerungen kannst du hier anpassen.
 const LOCATIONS = [
@@ -690,7 +692,7 @@ const ALBUM_DATA = {
   function writeRecord(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides'].includes(key)) {
+      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides', 'fuer-dich-map-hidden-places', 'fuer-dich-map-hidden-photo-keys'].includes(key)) {
         window.__fuerDichSyncAlbumState?.();
       }
       return true;
@@ -1370,6 +1372,8 @@ const ALBUM_DATA = {
         deletedPhotos: readRecord(ALBUM_DATA.deletedPhotosStorageKey),
         deletedUploadedPhotoIds: Object.keys(readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey)),
         locationOverrides: readRecord('fuer-dich-album-location-overrides'),
+        mapHiddenPlaces: readRecord(MAP_HIDDEN_PLACES_KEY),
+        mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
         uploadedPhotos: albumRemoteState?.uploadedPhotos || []
       };
     }
@@ -1378,6 +1382,8 @@ const ALBUM_DATA = {
       localStorage.setItem(ALBUM_DATA.dateOverridesStorageKey, JSON.stringify(state.dateOverrides || {}));
       localStorage.setItem(ALBUM_DATA.deletedPhotosStorageKey, JSON.stringify(state.deletedPhotos || {}));
       localStorage.setItem('fuer-dich-album-location-overrides', JSON.stringify(state.locationOverrides || {}));
+      localStorage.setItem(MAP_HIDDEN_PLACES_KEY, JSON.stringify(state.mapHiddenPlaces || {}));
+      localStorage.setItem(MAP_HIDDEN_PHOTOS_KEY, JSON.stringify(state.mapHiddenPhotoKeys || {}));
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
@@ -1388,6 +1394,8 @@ const ALBUM_DATA = {
       localStorage.setItem(ALBUM_DATA.dateOverridesStorageKey, JSON.stringify(merge(ALBUM_DATA.dateOverridesStorageKey, state.dateOverrides || {})));
       localStorage.setItem(ALBUM_DATA.deletedPhotosStorageKey, JSON.stringify(merge(ALBUM_DATA.deletedPhotosStorageKey, state.deletedPhotos || {})));
       localStorage.setItem('fuer-dich-album-location-overrides', JSON.stringify(merge('fuer-dich-album-location-overrides', state.locationOverrides || {})));
+      localStorage.setItem(MAP_HIDDEN_PLACES_KEY, JSON.stringify(merge(MAP_HIDDEN_PLACES_KEY, state.mapHiddenPlaces || {})));
+      localStorage.setItem(MAP_HIDDEN_PHOTOS_KEY, JSON.stringify(merge(MAP_HIDDEN_PHOTOS_KEY, state.mapHiddenPhotoKeys || {})));
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
@@ -1408,6 +1416,8 @@ const ALBUM_DATA = {
           deletedPhotos: state.deletedPhotos || {},
           deletedUploadedPhotoIds: state.deletedUploadedPhotoIds || [],
           locationOverrides: state.locationOverrides || {},
+          mapHiddenPlaces: state.mapHiddenPlaces || {},
+          mapHiddenPhotoKeys: state.mapHiddenPhotoKeys || {},
           uploadedPhotos: Array.isArray(state.uploadedPhotos) ? state.uploadedPhotos : []
         };
         applyPublishedAlbumState(albumPublishedState);
@@ -2454,6 +2464,8 @@ const ALBUM_DATA = {
           deletedPhotos: readRecord(ALBUM_DATA.deletedPhotosStorageKey),
           deletedUploadedPhotoIds: Object.keys(tombstones).filter((id) => tombstones[id]),
           locationOverrides: readRecord('fuer-dich-album-location-overrides'),
+          mapHiddenPlaces: readRecord(MAP_HIDDEN_PLACES_KEY),
+          mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
           uploadedPhotos
         };
         const json = JSON.stringify(exportData, null, 2);
@@ -2482,6 +2494,8 @@ const ALBUM_DATA = {
     let activeTreasureLetter = null;
     let memoryMap = null;
     let uploadedPhotoLayer = null;
+    const mapManagedPlaces = new Map();
+    let pendingMapPlaceMove = null;
     const memoryLocationMarkers = [];
 
     function readUnlockedLetters() {
@@ -2640,13 +2654,97 @@ const ALBUM_DATA = {
     window.setInterval(updateTreasureCountdowns, 1000);
 
     // Leaflet satellite map with tappable photo galleries on every memory pin.
+    function mapPlacePopupMarkup(place, photos) {
+      const gallery = photos.map((photo) => `<img class="memory-popup-photo" src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt || 'Gemeinsames Erinnerungsfoto')}" loading="lazy" decoding="async">`).join('');
+      const actions = `<div class="map-place-actions"><button type="button" data-map-place-action="rename" data-map-place-id="${escapeHtml(place.id)}">Umbenennen</button><button type="button" data-map-place-action="move" data-map-place-id="${escapeHtml(place.id)}">Verschieben</button><button type="button" data-map-place-action="merge" data-map-place-id="${escapeHtml(place.id)}">Zusammenführen</button><button type="button" data-map-place-action="delete" data-map-place-id="${escapeHtml(place.id)}">Löschen</button></div>`;
+      return `<div class="memory-popup"><strong>${escapeHtml(place.name)}</strong><small>${photos.length} Erinnerungsfotos</small>${place.memory ? `<p>${escapeHtml(place.memory)}</p>` : ''}<div class="memory-popup-gallery">${gallery}</div>${actions}</div>`;
+    }
+
+    function saveMapPlacePhotos(place, name, latitude, longitude) {
+      const overrides = readRecord('fuer-dich-album-location-overrides');
+      const keys = Array.from(new Set(place.photoKeys || []));
+      keys.forEach((key) => {
+        overrides[key] = { name, latitude, longitude, coordinates: [latitude, longitude] };
+      });
+      if (!writeRecord('fuer-dich-album-location-overrides', overrides)) return false;
+      if (place.staticId) {
+        const hiddenPlaces = readRecord(MAP_HIDDEN_PLACES_KEY);
+        hiddenPlaces[place.staticId] = true;
+        writeRecord(MAP_HIDDEN_PLACES_KEY, hiddenPlaces);
+      }
+      return true;
+    }
+
+    function refreshAllMapPlaces() {
+      refreshMemoryLocationPopups();
+      refreshUploadedMapPhotos();
+    }
+
+    function handleMapPlaceAction(event) {
+      const button = event.target.closest('[data-map-place-action]');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      window.L?.DomEvent?.stopPropagation(event);
+      const place = mapManagedPlaces.get(button.dataset.mapPlaceId);
+      if (!place) return;
+      const action = button.dataset.mapPlaceAction;
+      if (action === 'rename') {
+        const newName = window.prompt('Neuer Name für diesen Ort:', place.name);
+        if (newName === null || !newName.trim()) return;
+        if (!saveMapPlacePhotos(place, newName.trim(), place.latitude, place.longitude)) return;
+        refreshAllMapPlaces();
+      } else if (action === 'move') {
+        pendingMapPlaceMove = place.id;
+        const hint = document.querySelector('#map-location-pick-hint');
+        const copy = document.querySelector('#map-location-pick-copy');
+        if (copy) copy.textContent = `Tippe auf die Karte, um „${place.name}“ zu verschieben.`;
+        if (hint) hint.hidden = false;
+        memoryMap?.closePopup();
+      } else if (action === 'merge') {
+        const targets = Array.from(mapManagedPlaces.values()).filter((item) => item.id !== place.id);
+        if (!targets.length) { window.alert('Es gibt aktuell keinen anderen Ort zum Zusammenführen.'); return; }
+        const choice = window.prompt('Mit welchem Ort zusammenführen? Gib die Nummer ein:\n' + targets.map((item, index) => `${index + 1}: ${item.name}`).join('\n'));
+        if (choice === null) return;
+        const target = targets[Number(choice) - 1];
+        if (!target) { window.alert('Diese Nummer gibt es nicht.'); return; }
+        const merged = { ...target, photoKeys: Array.from(new Set([...(target.photoKeys || []), ...(place.photoKeys || [])])) };
+        if (!saveMapPlacePhotos(merged, target.name, target.latitude, target.longitude)) return;
+        [place, target].forEach((item) => {
+          if (!item.staticId) return;
+          const hiddenPlaces = readRecord(MAP_HIDDEN_PLACES_KEY);
+          hiddenPlaces[item.staticId] = true;
+          writeRecord(MAP_HIDDEN_PLACES_KEY, hiddenPlaces);
+        });
+        refreshAllMapPlaces();
+      } else if (action === 'delete') {
+        if (!window.confirm(`Diesen Kartenort „${place.name}“ löschen? Die Fotos bleiben im Album.`)) return;
+        if (place.staticId) {
+          const hiddenPlaces = readRecord(MAP_HIDDEN_PLACES_KEY);
+          hiddenPlaces[place.staticId] = true;
+          writeRecord(MAP_HIDDEN_PLACES_KEY, hiddenPlaces);
+        }
+        const hiddenPhotos = readRecord(MAP_HIDDEN_PHOTOS_KEY);
+        (place.photoKeys || []).forEach((key) => { hiddenPhotos[key] = true; });
+        writeRecord(MAP_HIDDEN_PHOTOS_KEY, hiddenPhotos);
+        refreshAllMapPlaces();
+      }
+    }
+
     function refreshMemoryLocationPopups() {
       const deleted = readRecord(ALBUM_DATA.deletedPhotosStorageKey);
+      const hiddenPlaces = readRecord(MAP_HIDDEN_PLACES_KEY);
       memoryLocationMarkers.forEach(({ marker, location }) => {
+        const placeId = location.placeId;
+        if (hiddenPlaces[placeId]) { marker.remove(); mapManagedPlaces.delete(placeId); return; }
+        marker.addTo(memoryMap);
         const photos = (location.photos || []).filter((src) => !deleted[src]);
-        const gallery = photos.map((src) => `<img class="memory-popup-photo" src="${escapeHtml(src)}" alt="Gemeinsames Erinnerungsfoto" loading="lazy" decoding="async">`).join('');
-        const popup = `<div class="memory-popup"><strong>${escapeHtml(location.name)}</strong><small>${photos.length} Erinnerungsfotos</small><p>${escapeHtml(location.memory || '')}</p><div class="memory-popup-gallery">${gallery}</div></div>`;
-        marker.setPopupContent(popup);
+        const latitude = Number(location.coordinates[0]);
+        const longitude = Number(location.coordinates[1]);
+        const place = { id: placeId, staticId: placeId, name: location.name, latitude, longitude, memory: location.memory, photoKeys: photos };
+        mapManagedPlaces.set(placeId, place);
+        marker.setLatLng([latitude, longitude]);
+        marker.setPopupContent(mapPlacePopupMarkup(place, photos.map((src) => ({ src }))));
       });
     }
 
@@ -2655,6 +2753,7 @@ const ALBUM_DATA = {
       try {
         if (!uploadedPhotoLayer) uploadedPhotoLayer = window.L.layerGroup().addTo(memoryMap);
         uploadedPhotoLayer.clearLayers();
+        Array.from(mapManagedPlaces.keys()).filter((id) => !id.startsWith('static:')).forEach((id) => mapManagedPlaces.delete(id));
         await refreshSharedAlbumState();
         const localPhotos = await readUploadedPhotos();
         const localById = new Map(localPhotos.map((photo) => [photo.id, photo]));
@@ -2666,41 +2765,48 @@ const ALBUM_DATA = {
         const photos = [...remotePhotos.filter((photo) => !tombstones[photo.id]), ...publishedPhotos, ...localPhotos.filter((photo) => !knownIds.has(photo.id) && !tombstones[photo.id])];
         const dateOverrides = readRecord(ALBUM_DATA.dateOverridesStorageKey);
         const locationOverrides = readRecord('fuer-dich-album-location-overrides');
+        const hiddenPhotos = readRecord(MAP_HIDDEN_PHOTOS_KEY);
         const points = [];
+        const dynamicGroups = new Map();
+        const getDynamicGroup = (name, lat, lon) => {
+          const key = `${name}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+          if (!dynamicGroups.has(key)) dynamicGroups.set(key, { id: 'dynamic:' + key, name, lat, lon, photoKeys: [], photos: [] });
+          return dynamicGroups.get(key);
+        };
         photos.forEach((photo) => {
-          const savedLocation = locationOverrides['uploaded:' + photo.id];
+          const photoKey = 'uploaded:' + photo.id;
+          if (hiddenPhotos[photoKey]) return;
+          const savedLocation = locationOverrides[photoKey];
           const rawLat = savedLocation?.latitude ?? photo.latitude;
           const rawLon = savedLocation?.longitude ?? photo.longitude;
           if (rawLat === null || rawLat === undefined || rawLat === '' || rawLon === null || rawLon === undefined || rawLon === '') return;
           const lat = Number(rawLat);
           const lon = Number(rawLon);
           if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
-          const point = window.L.latLng(lat, lon);
-          points.push(point);
-          const markerIcon = window.L.divIcon({ className: 'heart-marker-shell', html: '<span class="heart-marker" aria-hidden="true">♥</span>', iconSize: [34, 34], iconAnchor: [17, 28], popupAnchor: [0, -25] });
           const imageUrl = uploadedPhotoUrl(photo);
           const title = savedLocation?.name || photo.locationName || 'Ein gemeinsamer Ort';
           const dateValue = dateOverrides['uploaded:' + photo.id] || photo.capturedAt;
-          const popup = `<div class="memory-popup"><strong>${escapeHtml(title)}</strong><small>${dateValue ? escapeHtml(dateValue.slice(0, 10)) : 'Unsere Erinnerung'}</small><div class="memory-popup-gallery"><img class="memory-popup-photo" src="${escapeHtml(imageUrl)}" alt="Gemeinsames Erinnerungsfoto"></div></div>`;
-          window.L.marker(point, { icon: markerIcon }).addTo(uploadedPhotoLayer).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
+          const group = getDynamicGroup(title, lat, lon);
+          group.photoKeys.push(photoKey);
+          group.photos.push({ src: imageUrl, alt: dateValue ? 'Erinnerung vom ' + dateValue.slice(0, 10) : 'Gemeinsames Erinnerungsfoto' });
         });
         const albumPhotos = await getAlbumPhotos();
-        const assignedGroups = new Map();
-        albumPhotos.filter((photo) => !photo.uploaded && photo.location && Number.isFinite(Number(photo.location.latitude)) && Number.isFinite(Number(photo.location.longitude))).forEach((photo) => {
+        albumPhotos.filter((photo) => !hiddenPhotos[photo.key] && !photo.uploaded && photo.location && Number.isFinite(Number(photo.location.latitude)) && Number.isFinite(Number(photo.location.longitude))).forEach((photo) => {
           const lat = Number(photo.location.latitude);
           const lon = Number(photo.location.longitude);
           if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
           const name = photo.location.name || 'Ein gemeinsamer Ort';
-          const key = `${name}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
-          if (!assignedGroups.has(key)) assignedGroups.set(key, { name, lat, lon, photos: [] });
-          assignedGroups.get(key).photos.push(photo);
+          const group = getDynamicGroup(name, lat, lon);
+          group.photoKeys.push(photo.key);
+          group.photos.push({ src: photo.src, alt: photo.caption || 'Gemeinsames Erinnerungsfoto' });
         });
-        assignedGroups.forEach((group) => {
+        dynamicGroups.forEach((group) => {
           const point = window.L.latLng(group.lat, group.lon);
           points.push(point);
           const markerIcon = window.L.divIcon({ className: 'heart-marker-shell', html: '<span class="heart-marker" aria-hidden="true">♥</span>', iconSize: [34, 34], iconAnchor: [17, 28], popupAnchor: [0, -25] });
-          const gallery = group.photos.map((photo) => `<img class="memory-popup-photo" src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || 'Gemeinsames Erinnerungsfoto')}" loading="lazy" decoding="async">`).join('');
-          const popup = `<div class="memory-popup"><strong>${escapeHtml(group.name)}</strong><small>${group.photos.length} Erinnerungsfotos</small><div class="memory-popup-gallery">${gallery}</div></div>`;
+          const place = { id: group.id, name: group.name, latitude: group.lat, longitude: group.lon, photoKeys: group.photoKeys };
+          mapManagedPlaces.set(place.id, place);
+          const popup = mapPlacePopupMarkup(place, group.photos);
           window.L.marker(point, { icon: markerIcon }).addTo(uploadedPhotoLayer).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
         });
         if (points.length) memoryMap.fitBounds(window.L.latLngBounds(points), { padding: [28, 28], maxZoom: 12 });
@@ -2724,7 +2830,30 @@ const ALBUM_DATA = {
 
       if (!memoryMap) {
         memoryMap = window.L.map(container, { zoomControl: true, minZoom: 2, maxZoom: 18, worldCopyJump: true, scrollWheelZoom: true });
+        container.addEventListener('click', handleMapPlaceAction);
+        document.querySelector('#map-location-pick-cancel')?.addEventListener('click', (event) => {
+          event.stopPropagation();
+          pendingMapPlaceMove = null;
+          waitingForAlbumMapPoint = false;
+          const hint = document.querySelector('#map-location-pick-hint');
+          const copy = document.querySelector('#map-location-pick-copy');
+          if (copy) copy.textContent = 'Tippe auf die Karte, um den ausgewählten Fotos einen neuen Ort zuzuweisen.';
+          if (hint) hint.hidden = true;
+        });
         memoryMap.on('click', (event) => {
+          if (pendingMapPlaceMove) {
+            const place = mapManagedPlaces.get(pendingMapPlaceMove);
+            if (!place) { pendingMapPlaceMove = null; return; }
+            if (saveMapPlacePhotos(place, place.name, event.latlng.lat, event.latlng.lng)) {
+              pendingMapPlaceMove = null;
+              const hint = document.querySelector('#map-location-pick-hint');
+              const copy = document.querySelector('#map-location-pick-copy');
+              if (copy) copy.textContent = 'Tippe auf die Karte, um den ausgewählten Fotos einen neuen Ort zuzuweisen.';
+              if (hint) hint.hidden = true;
+              refreshAllMapPlaces();
+            }
+            return;
+          }
           if (!waitingForAlbumMapPoint || !albumLocationSelectedPhotos.size) return;
           const placeName = window.prompt('Wie soll dieser Ort heißen?');
           if (placeName === null) return;
@@ -2734,10 +2863,16 @@ const ALBUM_DATA = {
             return;
           }
           const overrides = readRecord('fuer-dich-album-location-overrides');
+          const hiddenPhotos = readRecord(MAP_HIDDEN_PHOTOS_KEY);
+          const hiddenPlaces = readRecord(MAP_HIDDEN_PLACES_KEY);
           albumLocationSelectedPhotos.forEach((key) => {
             overrides[key] = { name, latitude: event.latlng.lat, longitude: event.latlng.lng, coordinates: [event.latlng.lat, event.latlng.lng] };
+            hiddenPhotos[key] = false;
+            LOCATIONS.forEach((location, index) => {
+              if (location.photos?.includes(key)) hiddenPlaces['static:' + index] = true;
+            });
           });
-          if (!writeRecord('fuer-dich-album-location-overrides', overrides)) {
+          if (!writeRecord('fuer-dich-album-location-overrides', overrides) || !writeRecord(MAP_HIDDEN_PHOTOS_KEY, hiddenPhotos) || !writeRecord(MAP_HIDDEN_PLACES_KEY, hiddenPlaces)) {
             window.alert('Der Ort konnte auf diesem Gerät nicht gespeichert werden.');
             return;
           }
@@ -2750,7 +2885,7 @@ const ALBUM_DATA = {
           renderAlbumLocationControls();
           setAlbumSyncStatus(`${assignedCount} Fotos mit „${name}“ verknüpft.`, 'ready');
           renderAlbumPage();
-          refreshUploadedMapPhotos();
+          refreshAllMapPlaces();
         });
         const imagery = window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
           attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
@@ -2780,7 +2915,7 @@ const ALBUM_DATA = {
           const gallery = (location.photos || []).map((src) => `<img class="memory-popup-photo" src="${escapeHtml(src)}" alt="Gemeinsames Erinnerungsfoto" loading="lazy" decoding="async">`).join('');
           const popup = `<div class="memory-popup"><strong>${escapeHtml(location.name)}</strong><small>${location.photoCount || (location.photos || []).length} Erinnerungsfotos</small><p>${escapeHtml(location.memory || '')}</p><div class="memory-popup-gallery">${gallery}</div></div>`;
           const marker = window.L.marker(point, { icon: markerIcon }).addTo(memoryMap).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
-          memoryLocationMarkers.push({ marker, location });
+          memoryLocationMarkers.push({ marker, location: { ...location, placeId: 'static:' + LOCATIONS.indexOf(location) } });
           marker.on('popupopen', (event) => event.popup.getElement()?.querySelectorAll('.memory-popup-photo').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true })));
         });
         if (points.length) memoryMap.fitBounds(window.L.latLngBounds(points), { padding: [28, 28], maxZoom: 6 });

@@ -23,6 +23,8 @@ export async function onRequestPut(context) {
   state.dateOverrides = { ...state.dateOverrides, ...(isRecord(incoming.dateOverrides) ? incoming.dateOverrides : {}) };
   state.deletedPhotos = { ...state.deletedPhotos, ...(isRecord(incoming.deletedPhotos) ? incoming.deletedPhotos : {}) };
   state.locationOverrides = { ...state.locationOverrides, ...(isRecord(incoming.locationOverrides) ? incoming.locationOverrides : {}) };
+  state.mapHiddenPlaces = { ...state.mapHiddenPlaces, ...(isRecord(incoming.mapHiddenPlaces) ? incoming.mapHiddenPlaces : {}) };
+  state.mapHiddenPhotoKeys = { ...state.mapHiddenPhotoKeys, ...(isRecord(incoming.mapHiddenPhotoKeys) ? incoming.mapHiddenPhotoKeys : {}) };
 
   const deletedIds = new Set([
     ...state.deletedUploadedPhotoIds,
