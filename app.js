@@ -1772,6 +1772,8 @@ const ALBUM_DATA = {
       pages.push({ type: 'tools', photos: undatedPhotos, totalCount: undatedPhotos.length });
 
       albumPageIndex = Math.max(0, Math.min(albumPageIndex, pages.length - 1));
+      const jumpLastButton = document.querySelector('#album-jump-last');
+      if (jumpLastButton) jumpLastButton.disabled = albumPageIndex === pages.length - 1;
       const page = pages[albumPageIndex];
       const turnDirection = albumTurnDirection;
       albumTurnDirection = '';
@@ -2173,29 +2175,93 @@ const ALBUM_DATA = {
       if (window.lucide) window.lucide.createIcons();
     }
 
-    document.querySelector('#album-file-input')?.addEventListener('change', async (event) => {
+    async function prepareAlbumUploadFiles(selectedFiles) {
       const status = document.querySelector('#album-upload-status');
-      const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith('image/') || /\.(?:jpe?g|png|heic|heif|webp|avif)$/i.test(file.name));
-      albumUploadQueue.forEach((item) => URL.revokeObjectURL(item.previewUrl));
-      status.textContent = files.length ? 'Fotos werden vorbereitet …' : '';
-      albumUploadQueue = await Promise.all(files.map(async (file) => {
-        const metadata = await readJpegExif(file);
-        return {
-          id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          file,
-          fileName: file.name,
-          previewUrl: URL.createObjectURL(file),
-          capturedAt: metadata.capturedAt || '',
-          locationName: '',
-          latitude: metadata.latitude ?? null,
-          longitude: metadata.longitude ?? null,
-          hasExifDate: Boolean(metadata.capturedAt),
-          hasExifLocation: Number.isFinite(metadata.latitude) && Number.isFinite(metadata.longitude)
-        };
-      }));
-      renderAlbumUploadQueue();
-      status.textContent = files.length ? `${files.length} Foto${files.length === 1 ? '' : 's'} bereit. Datum und Ort kannst du pro Bild prüfen.` : 'Bitte wähle Bilddateien aus.';
+      const imagePattern = /\.(?:jpe?g|png|heic|heif|webp|avif)$/i;
+      const mimeByExtension = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', heic: 'image/heic', heif: 'image/heif', webp: 'image/webp', avif: 'image/avif' };
+      const files = [];
+      try {
+        for (const selected of selectedFiles) {
+          if (/\.zip$/i.test(selected.name) || selected.type === 'application/zip' || selected.type === 'application/x-zip-compressed') {
+            if (!window.JSZip) throw new Error('ZIP-Unterstützung wird noch geladen. Lade die Seite neu und versuche es erneut.');
+            if (selected.size > 250 * 1024 * 1024) throw new Error('Die ZIP-Datei ist größer als 250 MB. Bitte teile sie in kleinere ZIP-Dateien auf.');
+            status.textContent = `„${selected.name}“ wird geöffnet …`;
+            const archive = await window.JSZip.loadAsync(selected);
+            const entries = Object.values(archive.files).filter((entry) => !entry.dir && imagePattern.test(entry.name) && !/(^|\/)(__MACOSX|\.Trash)(\/|$)/i.test(entry.name) && !/(^|\/)\./.test(entry.name));
+            if (entries.length > 300) throw new Error('In der ZIP-Datei sind mehr als 300 Bilder. Bitte teile sie in kleinere ZIP-Dateien auf.');
+            let expandedBytes = 0;
+            for (const entry of entries) {
+              const blob = await entry.async('blob');
+              expandedBytes += blob.size;
+              if (expandedBytes > 350 * 1024 * 1024) throw new Error('Die entpackten Bilder sind zusammen größer als 350 MB. Bitte verwende kleinere ZIP-Dateien.');
+              const baseName = entry.name.split('/').filter(Boolean).pop() || 'Foto';
+              const extension = baseName.split('.').pop().toLowerCase();
+              files.push(new File([blob], baseName, { type: blob.type || mimeByExtension[extension] || 'application/octet-stream' }));
+            }
+          } else if (selected.type.startsWith('image/') || imagePattern.test(selected.name)) {
+            files.push(selected);
+          }
+        }
+        if (!files.length) throw new Error('In der Auswahl wurden keine unterstützten Bilder gefunden. ZIP-Dateien müssen unverschlüsselt sein.');
+        if (files.length > 300) throw new Error('Es wurden mehr als 300 Bilder ausgewählt. Bitte lade sie in kleineren Gruppen hoch.');
+
+        albumUploadQueue.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+        albumUploadQueue = [];
+        const readyItems = [];
+        for (let index = 0; index < files.length; index += 1) {
+          const file = files[index];
+          status.textContent = `Bilddaten werden gelesen … ${index + 1} von ${files.length}`;
+          const metadata = await readJpegExif(file);
+          readyItems.push({
+            id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            file,
+            fileName: file.name,
+            previewUrl: URL.createObjectURL(file),
+            capturedAt: metadata.capturedAt || '',
+            locationName: '',
+            latitude: metadata.latitude ?? null,
+            longitude: metadata.longitude ?? null,
+            hasExifDate: Boolean(metadata.capturedAt),
+            hasExifLocation: Number.isFinite(metadata.latitude) && Number.isFinite(metadata.longitude)
+          });
+        }
+        albumUploadQueue = readyItems;
+        renderAlbumUploadQueue();
+        status.textContent = `${files.length} Foto${files.length === 1 ? '' : 's'} bereit. Erkannte Datums- und Ortsdaten kannst du prüfen.`;
+      } catch (error) {
+        status.textContent = error.message || 'Die Bilder aus der Auswahl konnten nicht gelesen werden.';
+      }
+    }
+
+    document.querySelector('#album-file-input')?.addEventListener('change', async (event) => {
+      await prepareAlbumUploadFiles(Array.from(event.target.files || []));
       event.target.value = '';
+    });
+    const zipInput = document.querySelector('#album-zip-input');
+    const zipDropzone = document.querySelector('#album-zip-dropzone');
+    document.querySelector('#album-zip-pick')?.addEventListener('click', () => zipInput?.click());
+    zipInput?.addEventListener('change', async (event) => {
+      await prepareAlbumUploadFiles(Array.from(event.target.files || []));
+      event.target.value = '';
+    });
+    zipDropzone?.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      zipDropzone.classList.add('is-dragging');
+    });
+    zipDropzone?.addEventListener('dragleave', (event) => {
+      if (!zipDropzone.contains(event.relatedTarget)) zipDropzone.classList.remove('is-dragging');
+    });
+    zipDropzone?.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      zipDropzone.classList.remove('is-dragging');
+      await prepareAlbumUploadFiles(Array.from(event.dataTransfer?.files || []));
+    });
+
+    document.querySelector('#album-jump-last')?.addEventListener('click', async () => {
+      albumPageIndex = Number.MAX_SAFE_INTEGER;
+      albumTurnDirection = 'next';
+      await renderAlbumPage();
+      document.querySelector('#album-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     document.querySelector('#album-save-uploads')?.addEventListener('click', async (event) => {

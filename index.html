@@ -26,12 +26,13 @@
       };
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./style.css?v=28" />
+    <link rel="stylesheet" href="./style.css?v=29" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
-    <script defer src="./app.js?v=38"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js"></script>
+    <script defer src="./app.js?v=39"></script>
   </head>
   <body class="min-h-screen bg-ink font-sans text-white antialiased">
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -109,7 +110,10 @@
           <div class="eyebrow"><span class="eyebrow-line"></span> UNSERE ZEIT ZUSAMMEN</div>
           <h1 id="album-title" class="page-title font-display">Unser <em>Fotoalbum.</em></h1>
           <p id="album-description" class="page-intro"></p>
-          <p id="album-sync-status" class="album-sync-status" role="status" aria-live="polite" data-state="loading">Gemeinsamer Album-Speicher wird geprüft …</p>
+          <div class="album-topline">
+            <p id="album-sync-status" class="album-sync-status" role="status" aria-live="polite" data-state="loading">Gemeinsamer Album-Speicher wird geprüft …</p>
+            <button id="album-jump-last" class="album-jump-last" type="button"><i data-lucide="skip-forward" aria-hidden="true"></i><span>Zur letzten Seite</span></button>
+          </div>
           <audio id="album-song-audio" src="assets/audio/im-naechsten-leben.m4a" preload="none" playsinline webkit-playsinline hidden></audio>
           <button id="album-song-retry" class="album-song-retry" type="button" aria-label="Albumton starten" hidden><i data-lucide="volume-2" aria-hidden="true"></i><span>Ton starten</span></button>
           <div id="album-content" class="album-content"></div>
@@ -117,10 +121,17 @@
             <section id="album-upload-panel" class="album-upload-panel" aria-labelledby="album-upload-title">
               <div class="album-upload-heading">
                 <span class="album-upload-icon"><i data-lucide="image-plus" aria-hidden="true"></i></span>
-                <div><h2 id="album-upload-title">Bilder hinzufügen</h2><p>Wähle Fotos von deinem Handy. Datum und GPS werden übernommen, wenn sie im Bild gespeichert sind.</p></div>
+                <div><h2 id="album-upload-title">Bilder hinzufügen</h2><p>Wähle Fotos oder ziehe ein ZIP hier hinein. Datum und GPS werden übernommen, wenn sie im Bild gespeichert sind.</p></div>
               </div>
               <label class="action-button album-pick-button" for="album-file-input"><i data-lucide="images" aria-hidden="true"></i><span>Fotos auswählen</span></label>
               <input id="album-file-input" class="sr-only" type="file" accept="image/*" multiple />
+              <input id="album-zip-input" class="sr-only" type="file" accept=".zip,application/zip" />
+              <div id="album-zip-dropzone" class="album-zip-dropzone">
+                <i data-lucide="archive" aria-hidden="true"></i>
+                <strong>ZIP mit Bildern hier ablegen</strong>
+                <span>oder</span>
+                <button id="album-zip-pick" class="album-zip-pick" type="button">ZIP-Datei auswählen</button>
+              </div>
               <button id="album-delete-mode-button" class="album-delete-mode-button" type="button"><i data-lucide="trash-2" aria-hidden="true"></i><span>Fotos löschen</span></button>
               <div id="album-delete-controls" class="album-delete-controls" hidden>
                 <span id="album-delete-count">0 ausgewählt</span>
