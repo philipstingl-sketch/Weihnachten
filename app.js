@@ -1806,24 +1806,19 @@ const ALBUM_DATA = {
     }
 
     function renderBucketList() {
-      const pages = document.querySelector('#bucket-list-pages');
+      const list = document.querySelector('#bucket-list-items');
       const empty = document.querySelector('#bucket-list-empty');
       const count = document.querySelector('#bucket-list-count');
-      if (!pages || !empty || !count) return;
+      if (!list || !empty || !count) return;
       const items = readBucketItems();
       const done = items.filter((item) => item.done).length;
       count.textContent = items.length ? `${done} von ${items.length} Wünschen schon erlebt` : 'Noch keine Wünsche eingetragen';
       empty.hidden = items.length > 0;
-      const pageCount = Math.max(1, Math.ceil(items.length / 10));
-      pages.innerHTML = Array.from({ length: pageCount }, (_, pageIndex) => {
-        const pageItems = items.slice(pageIndex * 10, (pageIndex + 1) * 10);
-        const rows = pageItems.map((item, row) => `<li class="bucket-list-item${item.done ? ' is-done' : ''}" data-bucket-id="${escapeHtml(item.id)}" data-row="${row}" style="animation-delay:${row * 24}ms">
-          <button class="bucket-list-toggle" type="button" data-bucket-toggle="${escapeHtml(item.id)}" aria-pressed="${item.done}" aria-label="${item.done ? 'Als unerledigt markieren' : 'Als erlebt markieren'}"><i data-lucide="check" aria-hidden="true"></i></button>
-          <span class="bucket-list-text">${escapeHtml(item.text)}</span>
-          <button class="bucket-list-delete" type="button" data-bucket-delete="${escapeHtml(item.id)}" aria-label="Wunsch löschen"><i data-lucide="x" aria-hidden="true"></i></button>
-        </li>`).join('');
-        return `<section class="bucket-paper-page" aria-label="Wunschliste, Seite ${pageIndex + 1}"><ul class="bucket-list-items">${rows}</ul></section>`;
-      }).join('');
+      list.innerHTML = items.map((item, index) => `<li class="bucket-list-item${item.done ? ' is-done' : ''}" data-bucket-id="${escapeHtml(item.id)}" style="animation-delay:${Math.min(index, 12) * 24}ms">
+        <button class="bucket-list-toggle" type="button" data-bucket-toggle="${escapeHtml(item.id)}" aria-pressed="${item.done}" aria-label="${item.done ? 'Als unerledigt markieren' : 'Als erlebt markieren'}"><i data-lucide="check" aria-hidden="true"></i></button>
+        <span class="bucket-list-text">${escapeHtml(item.text)}</span>
+        <button class="bucket-list-delete" type="button" data-bucket-delete="${escapeHtml(item.id)}" aria-label="Wunsch löschen"><i data-lucide="x" aria-hidden="true"></i></button>
+      </li>`).join('');
       if (window.lucide) window.lucide.createIcons();
     }
 
@@ -1838,10 +1833,10 @@ const ALBUM_DATA = {
       if (!writeRecord(BUCKET_LIST_STORAGE_KEY, items)) return;
       input.value = '';
       renderBucketList();
-      document.querySelector('#bucket-list-pages .bucket-paper-page:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.querySelector('#bucket-list-items li:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
 
-    document.querySelector('#bucket-list-pages')?.addEventListener('click', (event) => {
+    document.querySelector('#bucket-list-items')?.addEventListener('click', (event) => {
       const toggle = event.target.closest('[data-bucket-toggle]');
       const remove = event.target.closest('[data-bucket-delete]');
       if (!toggle && !remove) return;
