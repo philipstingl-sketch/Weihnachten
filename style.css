@@ -309,6 +309,7 @@ button { font: inherit; }
 .album-photo-select.is-delete-select { top: .35rem; right: .35rem; left: auto; width: 2rem; height: 2rem; }
 .album-photo-card.is-delete-mode .album-photo-tile { outline: 2px solid rgba(244,63,94,.38); outline-offset: -2px; }
 .album-photo-card.is-delete-mode.is-selected .album-photo-tile { outline-color: #fb7185; box-shadow: 0 0 0 3px rgba(244,63,94,.3), 0 3px 10px rgba(64,40,35,.2); }
+.album-photo-card.is-location-selected .album-photo-tile { outline: 2px solid #fb7185; outline-offset: -2px; box-shadow: 0 0 0 3px rgba(244,63,94,.23); }
 .album-batch-form { margin: 0 .55rem .75rem; padding: .8rem; border: 1px solid rgba(255,239,222,.16); border-radius: 1rem; background: rgba(39,25,30,.83); box-shadow: 0 8px 24px rgba(0,0,0,.16); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .album-batch-label { display: block; color: #fff0f3; font-size: .75rem; font-weight: 600; }
 .album-batch-help { margin: .3rem 0 .65rem; color: #c0b2ba; font-size: .65rem; line-height: 1.4; }

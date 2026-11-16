@@ -1655,7 +1655,7 @@ const ALBUM_DATA = {
         : '<img src="' + escapeHtml(photo.src) + '" alt="" loading="lazy" decoding="async">';
       const hasGps = photo.latitude !== null && photo.latitude !== undefined && photo.latitude !== '' && photo.longitude !== null && photo.longitude !== undefined && photo.longitude !== '' && Number.isFinite(Number(photo.latitude)) && Number.isFinite(Number(photo.longitude));
       const hasLocation = Boolean(photo.location?.name || hasGps || LOCATIONS.some((location) => location.photos?.includes(photo.src)));
-      const select = albumLocationAssignMode && !hasLocation && !albumDeleteMode
+      const select = albumLocationAssignMode && !albumDeleteMode
         ? '<label class="album-photo-select is-location-select"><input type="checkbox" data-album-location-select="' + escapeHtml(photo.key) + '" aria-label="Foto für Standort auswählen" ' + (albumLocationSelectedPhotos.has(photo.key) ? 'checked' : '') + '><span></span></label>'
         : selectable && !albumLocationAssignMode && !albumDeleteMode
         ? '<label class="album-photo-select"><input type="checkbox" data-album-select="' + escapeHtml(photo.key) + '" aria-label="Für gemeinsames Datum auswählen" ' + (albumSelectedPhotos.has(photo.key) ? 'checked' : '') + '><span></span></label>'
@@ -1716,7 +1716,7 @@ const ALBUM_DATA = {
       cancelButton.hidden = !albumLocationAssignMode;
       count.textContent = albumLocationSelectedPhotos.size + ' ausgewählt';
       pickButton.disabled = albumLocationSelectedPhotos.size === 0;
-      startButton.querySelector('span').textContent = 'Fotos ohne Standort auswählen';
+      startButton.querySelector('span').textContent = 'Fotos im Album auswählen';
     }
 
     document.querySelector('#album-content')?.addEventListener('change', (event) => {
@@ -1724,6 +1724,7 @@ const ALBUM_DATA = {
       if (!checkbox) return;
       if (checkbox.checked) albumLocationSelectedPhotos.add(checkbox.dataset.albumLocationSelect);
       else albumLocationSelectedPhotos.delete(checkbox.dataset.albumLocationSelect);
+      checkbox.closest('.album-photo-card')?.classList.toggle('is-location-selected', checkbox.checked);
       renderAlbumLocationControls();
     });
 
@@ -1859,6 +1860,15 @@ const ALBUM_DATA = {
             renderAlbumPage();
             return;
           }
+          if (albumLocationAssignMode && photo) {
+            const checkbox = button.closest('.album-photo-card')?.querySelector('[data-album-location-select]');
+            if (checkbox) {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+              button.closest('.album-photo-card')?.classList.toggle('is-location-selected', checkbox.checked);
+              return;
+            }
+          }
           openAlbumPhoto(photo);
         }));
         albumContent.querySelectorAll('.album-photo-tile img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
@@ -1957,6 +1967,15 @@ const ALBUM_DATA = {
           else albumDeleteSelection.add(photo.key);
           renderAlbumPage();
           return;
+        }
+        if (albumLocationAssignMode && photo) {
+          const checkbox = button.closest('.album-photo-card')?.querySelector('[data-album-location-select]');
+          if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            button.closest('.album-photo-card')?.classList.toggle('is-location-selected', checkbox.checked);
+            return;
+          }
         }
         openAlbumPhoto(photo);
       }));
