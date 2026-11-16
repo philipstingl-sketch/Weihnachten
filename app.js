@@ -1346,6 +1346,8 @@ const ALBUM_DATA = {
     let albumDatabasePromise;
     let albumUploadQueue = [];
     let albumRemoteState = null;
+    let albumPublishedState = null;
+    let albumPublishedLoaded = false;
     let albumCloudReady = false;
     let albumCloudLoading = null;
     let albumCloudSaveTimer = 0;
@@ -1376,6 +1378,40 @@ const ALBUM_DATA = {
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
+    }
+
+    function applyPublishedAlbumState(state) {
+      const merge = (key, published) => ({ ...published, ...readRecord(key) });
+      localStorage.setItem(ALBUM_DATA.dateOverridesStorageKey, JSON.stringify(merge(ALBUM_DATA.dateOverridesStorageKey, state.dateOverrides || {})));
+      localStorage.setItem(ALBUM_DATA.deletedPhotosStorageKey, JSON.stringify(merge(ALBUM_DATA.deletedPhotosStorageKey, state.deletedPhotos || {})));
+      localStorage.setItem('fuer-dich-album-location-overrides', JSON.stringify(merge('fuer-dich-album-location-overrides', state.locationOverrides || {})));
+      const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+      for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
+      localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
+    }
+
+    async function loadPublishedAlbumState() {
+      if (albumPublishedLoaded) return albumPublishedState;
+      albumPublishedLoaded = true;
+      try {
+        const url = new URL('./album-published.json', document.baseURI);
+        url.searchParams.set('v', String(Date.now()));
+        const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) return null;
+        const state = await response.json();
+        if (!state || state.schemaVersion !== 1) return null;
+        albumPublishedState = {
+          dateOverrides: state.dateOverrides || {},
+          deletedPhotos: state.deletedPhotos || {},
+          deletedUploadedPhotoIds: state.deletedUploadedPhotoIds || [],
+          locationOverrides: state.locationOverrides || {},
+          uploadedPhotos: Array.isArray(state.uploadedPhotos) ? state.uploadedPhotos : []
+        };
+        applyPublishedAlbumState(albumPublishedState);
+        return albumPublishedState;
+      } catch (_) {
+        return null;
+      }
     }
 
     async function saveSharedAlbumStateNow() {
@@ -1451,7 +1487,10 @@ const ALBUM_DATA = {
         const response = await fetch('/api/album/state', { credentials: 'same-origin', cache: 'no-store' });
         if (!response.ok) {
           albumCloudReady = false;
-          setAlbumSyncStatus('Cloud-Synchronisierung wird noch eingerichtet; Änderungen bleiben vorerst auf diesem Gerät.', 'error');
+          const published = await loadPublishedAlbumState();
+          setAlbumSyncStatus(published
+            ? 'Veröffentlichte Albumdaten geladen. Änderungen kannst du als Website-Datei herunterladen.'
+            : 'Änderungen bleiben auf diesem Gerät, bis du die Website-Datei hochlädst.', published ? 'ready' : 'error');
           return false;
         }
         const remote = await response.json();
@@ -1547,6 +1586,7 @@ const ALBUM_DATA = {
     }
 
     function uploadedPhotoUrl(photo) {
+      if (photo.dataUrl) return photo.dataUrl;
       if (photo.remote) return '/api/album/photos/' + encodeURIComponent(photo.id);
       if (!albumObjectUrls.has(photo.id)) albumObjectUrls.set(photo.id, URL.createObjectURL(photo.blob));
       return albumObjectUrls.get(photo.id);
@@ -1562,7 +1602,10 @@ const ALBUM_DATA = {
       const localById = new Map(localUploads.map((photo) => [photo.id, photo]));
       const remoteUploads = albumCloudReady ? (albumRemoteState?.uploadedPhotos || []).map((photo) => ({ ...photo, blob: localById.get(photo.id)?.blob, remote: true })) : [];
       const remoteIds = new Set(remoteUploads.map((photo) => photo.id));
-      const allUploads = [...remoteUploads, ...localUploads.filter((photo) => !remoteIds.has(photo.id) && !readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey)[photo.id])];
+      const uploadedTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+      const publishedUploads = (albumPublishedState?.uploadedPhotos || []).filter((photo) => !remoteIds.has(photo.id) && !uploadedTombstones[photo.id]);
+      const knownIds = new Set([...remoteIds, ...publishedUploads.map((photo) => photo.id)]);
+      const allUploads = [...remoteUploads.filter((photo) => !uploadedTombstones[photo.id]), ...publishedUploads, ...localUploads.filter((photo) => !knownIds.has(photo.id) && !uploadedTombstones[photo.id])];
       const uploadedPhotos = allUploads.map((photo) => ({
         key: 'uploaded:' + photo.id,
         id: photo.id,
@@ -2201,6 +2244,97 @@ const ALBUM_DATA = {
       }
     });
 
+    async function blobToWebsiteDataUrl(blob) {
+      let exportBlob = blob;
+      if (window.createImageBitmap && blob.type.startsWith('image/')) {
+        try {
+          const bitmap = await createImageBitmap(blob);
+          const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          bitmap.close?.();
+          exportBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.78)) || blob;
+        } catch (_) {
+          exportBlob = blob;
+        }
+      }
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Ein Foto konnte nicht für den Website-Export gelesen werden.'));
+        reader.readAsDataURL(exportBlob);
+      });
+    }
+
+    async function exportAlbumForWebsite(button) {
+      const status = document.querySelector('#album-upload-status');
+      button.disabled = true;
+      status.textContent = 'Albumänderungen werden für die Website vorbereitet …';
+      try {
+        await loadPublishedAlbumState();
+        const localPhotos = await readUploadedPhotos().catch(() => []);
+        const localById = new Map(localPhotos.map((photo) => [photo.id, photo]));
+        const combined = new Map();
+        for (const photo of albumPublishedState?.uploadedPhotos || []) combined.set(photo.id, photo);
+        for (const photo of albumRemoteState?.uploadedPhotos || []) combined.set(photo.id, { ...photo, blob: localById.get(photo.id)?.blob || photo.blob, remote: true });
+        for (const photo of localPhotos) combined.set(photo.id, photo);
+
+        const tombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+        const uploadedPhotos = [];
+        for (const photo of combined.values()) {
+          if (tombstones[photo.id]) continue;
+          let dataUrl = photo.dataUrl || '';
+          if (photo.blob) dataUrl = await blobToWebsiteDataUrl(photo.blob);
+          else if (!dataUrl && photo.remote) {
+            const response = await fetch('/api/album/photos/' + encodeURIComponent(photo.id), { credentials: 'same-origin', cache: 'no-store' });
+            if (!response.ok) throw new Error('Ein bereits synchronisiertes Foto ließ sich nicht exportieren. Öffne den Export auf einem Gerät, auf dem das Foto gespeichert ist.');
+            dataUrl = await blobToWebsiteDataUrl(await response.blob());
+          }
+          if (!dataUrl) continue;
+          uploadedPhotos.push({
+            id: photo.id,
+            fileName: photo.fileName || 'erinnerungsfoto.jpg',
+            caption: photo.caption || 'Ein Moment für uns',
+            capturedAt: photo.capturedAt || '',
+            locationName: photo.locationName || '',
+            latitude: photo.latitude !== null && photo.latitude !== '' && Number.isFinite(Number(photo.latitude)) ? Number(photo.latitude) : null,
+            longitude: photo.longitude !== null && photo.longitude !== '' && Number.isFinite(Number(photo.longitude)) ? Number(photo.longitude) : null,
+            addedAt: photo.addedAt || '',
+            dataUrl
+          });
+        }
+
+        const exportData = {
+          schemaVersion: 1,
+          updatedAt: new Date().toISOString(),
+          dateOverrides: readRecord(ALBUM_DATA.dateOverridesStorageKey),
+          deletedPhotos: readRecord(ALBUM_DATA.deletedPhotosStorageKey),
+          deletedUploadedPhotoIds: Object.keys(tombstones).filter((id) => tombstones[id]),
+          locationOverrides: readRecord('fuer-dich-album-location-overrides'),
+          uploadedPhotos
+        };
+        const json = JSON.stringify(exportData, null, 2);
+        const sizeLimit = 24 * 1024 * 1024;
+        if (new Blob([json]).size > sizeLimit) throw new Error('Die Exportdatei ist größer als 24 MB. Lade weniger neue Fotos auf einmal ins Album oder exportiere sie in kleineren Gruppen.');
+        const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'album-published.json';
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+        status.textContent = `Datei erstellt: ${uploadedPhotos.length} neue Fotos und deine Albumänderungen. Lade „album-published.json“ in GitHub hoch.`;
+        setAlbumSyncStatus('Website-Datei heruntergeladen. Nach dem GitHub-Upload erscheint sie auf allen Geräten.', 'ready');
+      } catch (error) {
+        status.textContent = error.message || 'Die Website-Datei konnte nicht erstellt werden.';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    document.querySelector('#album-export-website')?.addEventListener('click', (event) => exportAlbumForWebsite(event.currentTarget));
+
     // Open-When vault: restore its cards, date countdowns and password letters.
     const treasureGrid = document.querySelector('#treasure-grid');
     const treasureModal = document.querySelector('#treasure-modal');
@@ -2386,10 +2520,13 @@ const ALBUM_DATA = {
         const remotePhotos = albumCloudReady ? (albumRemoteState?.uploadedPhotos || []).map((photo) => ({ ...photo, blob: localById.get(photo.id)?.blob, remote: true })) : [];
         const remoteIds = new Set(remotePhotos.map((photo) => photo.id));
         const tombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
-        const photos = [...remotePhotos, ...localPhotos.filter((photo) => !remoteIds.has(photo.id) && !tombstones[photo.id])];
+        const publishedPhotos = (albumPublishedState?.uploadedPhotos || []).filter((photo) => !remoteIds.has(photo.id) && !tombstones[photo.id]);
+        const knownIds = new Set([...remoteIds, ...publishedPhotos.map((photo) => photo.id)]);
+        const photos = [...remotePhotos.filter((photo) => !tombstones[photo.id]), ...publishedPhotos, ...localPhotos.filter((photo) => !knownIds.has(photo.id) && !tombstones[photo.id])];
         const dateOverrides = readRecord(ALBUM_DATA.dateOverridesStorageKey);
         const points = [];
         photos.forEach((photo) => {
+          if (photo.latitude === null || photo.latitude === undefined || photo.latitude === '' || photo.longitude === null || photo.longitude === undefined || photo.longitude === '') return;
           const lat = Number(photo.latitude);
           const lon = Number(photo.longitude);
           if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return;

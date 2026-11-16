@@ -398,6 +398,11 @@ button { font: inherit; }
 .album-upload-meta-note { margin: 0; color: #a99ca4; font-size: .57rem; line-height: 1.4; }
 .album-save-uploads { display: flex; width: 100%; min-height: 2.9rem; align-items: center; justify-content: center; gap: .45rem; margin-top: .7rem; }
 .album-save-uploads:disabled { opacity: .55; }
+.album-publish-box { margin-top: .8rem; padding: .75rem; border: 1px solid rgba(253,164,175,.18); border-radius: .85rem; background: rgba(9,9,11,.28); }
+.album-export-website { display: flex; width: 100%; min-height: 2.85rem; align-items: center; justify-content: center; gap: .45rem; padding: .5rem .7rem; border: 1px solid rgba(253,164,175,.28); border-radius: .75rem; color: #fff0f3; background: rgba(244,63,94,.16); font: inherit; font-size: .68rem; font-weight: 650; cursor: pointer; touch-action: manipulation; }
+.album-export-website svg { width: 1rem; height: 1rem; color: var(--blush); }
+.album-export-website:disabled { opacity: .55; cursor: wait; }
+.album-publish-box p { margin: .5rem 0 0; color: #b9aab2; font-size: .6rem; line-height: 1.45; }
 .album-delete-mode-button { display: flex; width: 100%; min-height: 2.65rem; align-items: center; justify-content: center; gap: .45rem; margin-top: .55rem; border: 1px solid rgba(253,164,175,.22); border-radius: .8rem; color: #fda4af; background: rgba(244,63,94,.055); font: inherit; font-size: .68rem; cursor: pointer; touch-action: manipulation; }
 .album-delete-mode-button svg { width: .95rem; height: .95rem; }
 .album-delete-mode-button.is-active { color: white; background: rgba(244,63,94,.2); }

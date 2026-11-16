@@ -26,12 +26,12 @@
       };
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./style.css?v=26" />
+    <link rel="stylesheet" href="./style.css?v=27" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
-    <script defer src="./app.js?v=36"></script>
+    <script defer src="./app.js?v=37"></script>
   </head>
   <body class="min-h-screen bg-ink font-sans text-white antialiased">
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -126,10 +126,14 @@
                 <span id="album-delete-count">0 ausgewählt</span>
                 <div><button id="album-delete-confirm" class="album-delete-confirm" type="button" disabled>Ausgewählte löschen</button><button id="album-delete-cancel" class="album-delete-cancel" type="button">Abbrechen</button></div>
               </div>
-              <p class="album-upload-note">Datum, Ort und neue Fotos werden mit dem privaten Album-Speicher synchronisiert, damit sie auf euren Geräten gleich sind.</p>
+              <p class="album-upload-note">Ohne gemeinsamen Cloud-Speicher bleiben Änderungen zunächst auf diesem Gerät. Über den Knopf unten kannst du sie zusammen mit neuen Fotos für alle Geräte veröffentlichen.</p>
               <div id="album-upload-queue" class="album-upload-queue" hidden>
                 <div id="album-upload-items" class="album-upload-items"></div>
                 <button id="album-save-uploads" class="action-button album-save-uploads" type="button"><i data-lucide="heart" aria-hidden="true"></i><span>Ins Album übernehmen</span></button>
+              </div>
+              <div class="album-publish-box">
+                <button id="album-export-website" class="album-export-website" type="button"><i data-lucide="download" aria-hidden="true"></i><span>Änderungen für die Website herunterladen</span></button>
+                <p>Die Datei enthält Datums- und Ortsänderungen, Löschungen und neue Fotos. Lade sie danach in GitHub hoch; Cloudflare veröffentlicht das Album anschließend für alle Geräte.</p>
               </div>
               <p id="album-upload-status" class="album-upload-status" role="status" aria-live="polite"></p>
             </section>
