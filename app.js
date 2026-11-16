@@ -144,6 +144,8 @@ const MAP_DATA = {
 };
 const MAP_HIDDEN_PLACES_KEY = 'fuer-dich-map-hidden-places';
 const MAP_HIDDEN_PHOTOS_KEY = 'fuer-dich-map-hidden-photo-keys';
+const BUCKET_LIST_STORAGE_KEY = 'fuer-dich-bucket-list';
+const BUCKET_LIST_DELETED_KEY = 'fuer-dich-bucket-list-deleted';
 
 // GPS-Ortsgruppen aus 38 Fotos; Namen und Erinnerungen kannst du hier anpassen.
 const LOCATIONS = [
@@ -692,7 +694,7 @@ const ALBUM_DATA = {
   function writeRecord(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides', 'fuer-dich-map-hidden-places', 'fuer-dich-map-hidden-photo-keys'].includes(key)) {
+      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides', 'fuer-dich-map-hidden-places', 'fuer-dich-map-hidden-photo-keys', BUCKET_LIST_STORAGE_KEY, BUCKET_LIST_DELETED_KEY].includes(key)) {
         window.__fuerDichSyncAlbumState?.();
       }
       return true;
@@ -1374,6 +1376,8 @@ const ALBUM_DATA = {
         locationOverrides: readRecord('fuer-dich-album-location-overrides'),
         mapHiddenPlaces: readRecord(MAP_HIDDEN_PLACES_KEY),
         mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
+        bucketItems: readBucketItems(),
+        bucketDeletedIds: readBucketDeletedIds(),
         uploadedPhotos: albumRemoteState?.uploadedPhotos || []
       };
     }
@@ -1384,6 +1388,10 @@ const ALBUM_DATA = {
       localStorage.setItem('fuer-dich-album-location-overrides', JSON.stringify(state.locationOverrides || {}));
       localStorage.setItem(MAP_HIDDEN_PLACES_KEY, JSON.stringify(state.mapHiddenPlaces || {}));
       localStorage.setItem(MAP_HIDDEN_PHOTOS_KEY, JSON.stringify(state.mapHiddenPhotoKeys || {}));
+      const sharedBucketDeletedIds = new Set([...(Array.isArray(state.bucketDeletedIds) ? state.bucketDeletedIds : []), ...readBucketDeletedIds()]);
+      const sharedBucketItems = mergeBucketItems(readBucketItems(), Array.isArray(state.bucketItems) ? state.bucketItems : []).filter((item) => !sharedBucketDeletedIds.has(item.id));
+      localStorage.setItem(BUCKET_LIST_DELETED_KEY, JSON.stringify(Array.from(sharedBucketDeletedIds)));
+      localStorage.setItem(BUCKET_LIST_STORAGE_KEY, JSON.stringify(sharedBucketItems));
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
@@ -1396,6 +1404,10 @@ const ALBUM_DATA = {
       localStorage.setItem('fuer-dich-album-location-overrides', JSON.stringify(merge('fuer-dich-album-location-overrides', state.locationOverrides || {})));
       localStorage.setItem(MAP_HIDDEN_PLACES_KEY, JSON.stringify(merge(MAP_HIDDEN_PLACES_KEY, state.mapHiddenPlaces || {})));
       localStorage.setItem(MAP_HIDDEN_PHOTOS_KEY, JSON.stringify(merge(MAP_HIDDEN_PHOTOS_KEY, state.mapHiddenPhotoKeys || {})));
+      const sharedBucketDeletedIds = new Set([...(Array.isArray(state.bucketDeletedIds) ? state.bucketDeletedIds : []), ...readBucketDeletedIds()]);
+      const sharedBucketItems = mergeBucketItems(Array.isArray(state.bucketItems) ? state.bucketItems : [], readBucketItems()).filter((item) => !sharedBucketDeletedIds.has(item.id));
+      localStorage.setItem(BUCKET_LIST_DELETED_KEY, JSON.stringify(Array.from(sharedBucketDeletedIds)));
+      localStorage.setItem(BUCKET_LIST_STORAGE_KEY, JSON.stringify(sharedBucketItems));
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
@@ -1418,6 +1430,8 @@ const ALBUM_DATA = {
           locationOverrides: state.locationOverrides || {},
           mapHiddenPlaces: state.mapHiddenPlaces || {},
           mapHiddenPhotoKeys: state.mapHiddenPhotoKeys || {},
+          bucketItems: Array.isArray(state.bucketItems) ? state.bucketItems : [],
+          bucketDeletedIds: Array.isArray(state.bucketDeletedIds) ? state.bucketDeletedIds : [],
           uploadedPhotos: Array.isArray(state.uploadedPhotos) ? state.uploadedPhotos : []
         };
         applyPublishedAlbumState(albumPublishedState);
@@ -1763,6 +1777,91 @@ const ALBUM_DATA = {
       if (hint) hint.hidden = false;
       setAlbumSyncStatus('Tippe auf der Karte auf den gewünschten Ort.', 'ready');
     });
+
+    function readBucketItems() {
+      try {
+        const items = JSON.parse(localStorage.getItem(BUCKET_LIST_STORAGE_KEY) || '[]');
+        const deletedIds = new Set(readBucketDeletedIds());
+        return Array.isArray(items) ? items.filter((item) => item && typeof item.id === 'string' && typeof item.text === 'string' && !deletedIds.has(item.id)).map((item) => ({ id: item.id, text: item.text, done: Boolean(item.done), createdAt: item.createdAt || '', updatedAt: item.updatedAt || item.createdAt || '' })) : [];
+      } catch (_) { return []; }
+    }
+
+    function readBucketDeletedIds() {
+      try {
+        const ids = JSON.parse(localStorage.getItem(BUCKET_LIST_DELETED_KEY) || '[]');
+        return Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [];
+      } catch (_) { return []; }
+    }
+
+    function mergeBucketItems(...lists) {
+      const byId = new Map();
+      lists.forEach((items) => (Array.isArray(items) ? items : []).forEach((item) => {
+        if (!item || typeof item.id !== 'string' || typeof item.text !== 'string') return;
+        const current = byId.get(item.id);
+        const itemTime = Date.parse(item.updatedAt || item.createdAt || '') || 0;
+        const currentTime = Date.parse(current?.updatedAt || current?.createdAt || '') || 0;
+        if (!current || itemTime >= currentTime) byId.set(item.id, { id: item.id, text: item.text, done: Boolean(item.done), createdAt: item.createdAt || '', updatedAt: item.updatedAt || item.createdAt || '' });
+      }));
+      return Array.from(byId.values()).sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0));
+    }
+
+    function renderBucketList() {
+      const list = document.querySelector('#bucket-list-items');
+      const empty = document.querySelector('#bucket-list-empty');
+      const count = document.querySelector('#bucket-list-count');
+      if (!list || !empty || !count) return;
+      const items = readBucketItems();
+      const done = items.filter((item) => item.done).length;
+      count.textContent = items.length ? `${done} von ${items.length} Wünschen schon erlebt` : 'Noch keine Wünsche eingetragen';
+      empty.hidden = items.length > 0;
+      list.innerHTML = items.map((item, index) => `<li class="bucket-list-item${item.done ? ' is-done' : ''}" data-bucket-id="${escapeHtml(item.id)}" style="animation-delay:${Math.min(index, 12) * 24}ms">
+        <button class="bucket-list-toggle" type="button" data-bucket-toggle="${escapeHtml(item.id)}" aria-pressed="${item.done}" aria-label="${item.done ? 'Als unerledigt markieren' : 'Als erlebt markieren'}"><i data-lucide="check" aria-hidden="true"></i></button>
+        <span class="bucket-list-text">${escapeHtml(item.text)}</span>
+        <button class="bucket-list-delete" type="button" data-bucket-delete="${escapeHtml(item.id)}" aria-label="Wunsch löschen"><i data-lucide="x" aria-hidden="true"></i></button>
+      </li>`).join('');
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    document.querySelector('#bucket-list-form')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.querySelector('#bucket-list-input');
+      const text = input.value.trim();
+      if (!text) return;
+      const items = readBucketItems();
+      const createdAt = new Date().toISOString();
+      items.push({ id: window.crypto?.randomUUID?.() || `wish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text, done: false, createdAt, updatedAt: createdAt });
+      if (!writeRecord(BUCKET_LIST_STORAGE_KEY, items)) return;
+      input.value = '';
+      renderBucketList();
+      document.querySelector('#bucket-list-items li:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    document.querySelector('#bucket-list-items')?.addEventListener('click', (event) => {
+      const toggle = event.target.closest('[data-bucket-toggle]');
+      const remove = event.target.closest('[data-bucket-delete]');
+      if (!toggle && !remove) return;
+      const id = (toggle || remove).dataset.bucketToggle || (toggle || remove).dataset.bucketDelete;
+      const items = readBucketItems();
+      const item = items.find((entry) => entry.id === id);
+      if (!item) return;
+      if (toggle) {
+        item.done = !item.done;
+        item.updatedAt = new Date().toISOString();
+        if (item.done) {
+          const progress = document.querySelector('.bucket-list-progress');
+          progress?.classList.add('is-celebrating');
+          window.setTimeout(() => progress?.classList.remove('is-celebrating'), 500);
+        }
+      } else {
+        items.splice(items.indexOf(item), 1);
+        const deletedIds = readBucketDeletedIds();
+        if (!deletedIds.includes(item.id)) deletedIds.push(item.id);
+        writeRecord(BUCKET_LIST_DELETED_KEY, deletedIds);
+      }
+      writeRecord(BUCKET_LIST_STORAGE_KEY, items);
+      renderBucketList();
+    });
+    renderBucketList();
 
     function openAlbumPhoto(photo) {
       if (!photo) return;
@@ -2466,6 +2565,8 @@ const ALBUM_DATA = {
           locationOverrides: readRecord('fuer-dich-album-location-overrides'),
           mapHiddenPlaces: readRecord(MAP_HIDDEN_PLACES_KEY),
           mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
+          bucketItems: readBucketItems(),
+          bucketDeletedIds: readBucketDeletedIds(),
           uploadedPhotos
         };
         const json = JSON.stringify(exportData, null, 2);
@@ -2653,7 +2754,30 @@ const ALBUM_DATA = {
     renderTreasureCards();
     window.setInterval(updateTreasureCountdowns, 1000);
 
-    // Leaflet satellite map with tappable photo galleries on every memory pin.
+    // Leaflet satellite map with a searchable, manageable place directory.
+    function renderMapPlaceDirectory() {
+      const list = document.querySelector('#map-place-list');
+      const total = document.querySelector('#map-place-total');
+      if (!list || !total) return;
+      const query = (document.querySelector('#map-place-search')?.value || '').trim().toLocaleLowerCase('de-DE');
+      const places = Array.from(mapManagedPlaces.values()).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      total.textContent = `${places.length} ${places.length === 1 ? 'Ort' : 'Orte'}`;
+      const filtered = places.filter((place) => `${place.name} ${place.memory || ''}`.toLocaleLowerCase('de-DE').includes(query));
+      if (!filtered.length) {
+        list.innerHTML = `<p class="map-place-empty">${query ? 'Keine passenden Orte gefunden.' : 'Noch keine Orte auf der Karte.'}</p>`;
+        return;
+      }
+      const actions = [['rename', 'Umbenennen'], ['move', 'Verschieben'], ['merge', 'Zusammenführen'], ['delete', 'Löschen']];
+      list.innerHTML = filtered.map((place) => `<article class="map-place-row">
+        <span class="map-place-preview"><i data-lucide="heart" aria-hidden="true"></i><img src="${escapeHtml(place.previewSrc || '')}" alt="" loading="lazy" decoding="async"></span>
+        <div class="map-place-row-body"><button class="map-place-row-open" type="button" data-map-place-open="${escapeHtml(place.id)}"><span class="map-place-row-title">${escapeHtml(place.name)}</span><span class="map-place-row-meta">${place.photoKeys?.length || 0} Fotos · ${Number(place.latitude).toFixed(4)}, ${Number(place.longitude).toFixed(4)}</span></button>
+          <div class="map-place-row-actions">${actions.map(([action, label]) => `<button type="button" data-map-place-action="${action}" data-map-place-id="${escapeHtml(place.id)}">${label}</button>`).join('')}</div>
+        </div>
+      </article>`).join('');
+      list.querySelectorAll('.map-place-preview img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
+      if (window.lucide) window.lucide.createIcons();
+    }
+
     function mapPlacePopupMarkup(place, photos) {
       const gallery = photos.map((photo) => `<img class="memory-popup-photo" src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt || 'Gemeinsames Erinnerungsfoto')}" loading="lazy" decoding="async">`).join('');
       const actions = `<div class="map-place-actions"><button type="button" data-map-place-action="rename" data-map-place-id="${escapeHtml(place.id)}">Umbenennen</button><button type="button" data-map-place-action="move" data-map-place-id="${escapeHtml(place.id)}">Verschieben</button><button type="button" data-map-place-action="merge" data-map-place-id="${escapeHtml(place.id)}">Zusammenführen</button><button type="button" data-map-place-action="delete" data-map-place-id="${escapeHtml(place.id)}">Löschen</button></div>`;
@@ -2741,11 +2865,12 @@ const ALBUM_DATA = {
         const photos = (location.photos || []).filter((src) => !deleted[src]);
         const latitude = Number(location.coordinates[0]);
         const longitude = Number(location.coordinates[1]);
-        const place = { id: placeId, staticId: placeId, name: location.name, latitude, longitude, memory: location.memory, photoKeys: photos };
+        const place = { id: placeId, staticId: placeId, name: location.name, latitude, longitude, memory: location.memory, photoKeys: photos, previewSrc: photos[0] || '', marker };
         mapManagedPlaces.set(placeId, place);
         marker.setLatLng([latitude, longitude]);
         marker.setPopupContent(mapPlacePopupMarkup(place, photos.map((src) => ({ src }))));
       });
+      renderMapPlaceDirectory();
     }
 
     async function refreshUploadedMapPhotos() {
@@ -2804,11 +2929,12 @@ const ALBUM_DATA = {
           const point = window.L.latLng(group.lat, group.lon);
           points.push(point);
           const markerIcon = window.L.divIcon({ className: 'heart-marker-shell', html: '<span class="heart-marker" aria-hidden="true">♥</span>', iconSize: [34, 34], iconAnchor: [17, 28], popupAnchor: [0, -25] });
-          const place = { id: group.id, name: group.name, latitude: group.lat, longitude: group.lon, photoKeys: group.photoKeys };
-          mapManagedPlaces.set(place.id, place);
+          const place = { id: group.id, name: group.name, latitude: group.lat, longitude: group.lon, photoKeys: group.photoKeys, previewSrc: group.photos[0]?.src || '' };
           const popup = mapPlacePopupMarkup(place, group.photos);
-          window.L.marker(point, { icon: markerIcon }).addTo(uploadedPhotoLayer).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
+          place.marker = window.L.marker(point, { icon: markerIcon }).addTo(uploadedPhotoLayer).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
+          mapManagedPlaces.set(place.id, place);
         });
+        renderMapPlaceDirectory();
         if (points.length) memoryMap.fitBounds(window.L.latLngBounds(points), { padding: [28, 28], maxZoom: 12 });
       } catch (_) {
         // The album remains usable if browser storage is unavailable.
@@ -2831,6 +2957,17 @@ const ALBUM_DATA = {
       if (!memoryMap) {
         memoryMap = window.L.map(container, { zoomControl: true, minZoom: 2, maxZoom: 18, worldCopyJump: true, scrollWheelZoom: true });
         container.addEventListener('click', handleMapPlaceAction);
+        const placeList = document.querySelector('#map-place-list');
+        placeList?.addEventListener('click', handleMapPlaceAction);
+        placeList?.addEventListener('click', (event) => {
+          const button = event.target.closest('[data-map-place-open]');
+          if (!button) return;
+          const place = mapManagedPlaces.get(button.dataset.mapPlaceOpen);
+          if (!place) return;
+          memoryMap.setView([place.latitude, place.longitude], Math.max(memoryMap.getZoom(), 12), { animate: true });
+          place.marker?.openPopup();
+        });
+        document.querySelector('#map-place-search')?.addEventListener('input', renderMapPlaceDirectory);
         document.querySelector('#map-location-pick-cancel')?.addEventListener('click', (event) => {
           event.stopPropagation();
           pendingMapPlaceMove = null;
@@ -2998,6 +3135,7 @@ const ALBUM_DATA = {
         if (getDailyCouponState().day !== renderedCouponDay) renderCoupons();
       }
       if (event.detail.tab === 'karte') initializeMap();
+      if (event.detail.tab === 'bucketlist') renderBucketList();
       if (event.detail.tab === 'album') {
         refreshSharedAlbumState(true).then(() => renderAlbumPage());
       }

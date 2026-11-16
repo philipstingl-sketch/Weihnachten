@@ -105,6 +105,26 @@
           <div id="map-location-pick-hint" class="map-location-pick-hint" hidden><span id="map-location-pick-copy">Tippe auf die Karte, um den ausgewählten Fotos einen neuen Ort zuzuweisen.</span><button id="map-location-pick-cancel" type="button">Abbrechen</button></div>
           <div id="memory-map" class="memory-map" role="application" aria-label="Interaktive Weltkarte unserer gemeinsamen Erinnerungsorte"></div>
           <p id="map-fallback" class="map-fallback" hidden></p>
+          <section class="map-place-directory glass-card" aria-labelledby="map-place-directory-title">
+            <div class="map-place-directory-heading"><div><span class="pill">UNSERE ERINNERUNGSORTE</span><h2 id="map-place-directory-title" class="font-display">Orte verwalten</h2></div><span id="map-place-total" class="map-place-total">0 Orte</span></div>
+            <label class="map-place-search"><i data-lucide="search" aria-hidden="true"></i><input id="map-place-search" type="search" placeholder="Ort oder Erinnerung suchen" autocomplete="off" /></label>
+            <div id="map-place-list" class="map-place-list" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section id="bucketlist" class="tab-panel tab-section" data-panel="bucketlist" aria-labelledby="bucketlist-title" hidden>
+          <div class="bucket-list-sheet">
+            <div class="bucket-list-heading"><span class="eyebrow"><span class="eyebrow-line"></span> UNSERE NÄCHSTEN ABENTEUER</span><h1 id="bucketlist-title" class="font-display">Unsere Wunschliste</h1><p>Große Pläne und kleine Wünsche – hier sammeln wir alles, was wir zusammen machen möchten.</p></div>
+            <img class="bucket-list-art" src="assets/images/bucket-list-vintage.png" alt="Vintage Bucket List mit Reisezeichnungen und leeren Wunschzeilen" />
+            <form id="bucket-list-form" class="bucket-list-form">
+              <label class="sr-only" for="bucket-list-input">Neuen Wunsch eintragen</label>
+              <input id="bucket-list-input" type="text" maxlength="180" placeholder="Zum Beispiel: zusammen ans Meer fahren …" required />
+              <button class="bucket-add-button" type="submit" aria-label="Wunsch hinzufügen"><i data-lucide="plus" aria-hidden="true"></i><span>Hinzufügen</span></button>
+            </form>
+            <div class="bucket-list-progress"><span id="bucket-list-count">Noch keine Wünsche eingetragen</span><span id="bucket-list-progress-mark" aria-hidden="true">♡</span></div>
+            <ul id="bucket-list-items" class="bucket-list-items" aria-label="Unsere Wunschliste"></ul>
+            <p id="bucket-list-empty" class="bucket-list-empty">Schreib den ersten Wunsch auf – die Liste wächst mit euch. ✨</p>
+          </div>
         </section>
 
         <section id="album" class="tab-panel tab-section" data-panel="album" aria-labelledby="album-title" hidden>
@@ -165,6 +185,7 @@
         <button class="nav-item nav-btn" type="button" data-tab="game" data-target="game" aria-controls="game"><i data-lucide="gamepad-2"></i><span>Game</span></button>
         <button class="nav-item nav-btn" type="button" data-tab="tresor" data-target="tresor" aria-controls="tresor"><i data-lucide="lock-keyhole"></i><span>Tresor</span></button>
         <button class="nav-item nav-btn" type="button" data-tab="karte" data-target="karte" aria-controls="karte"><i data-lucide="map-pin"></i><span>Karte</span></button>
+        <button class="nav-item nav-btn" type="button" data-tab="bucketlist" data-target="bucketlist" aria-controls="bucketlist"><i data-lucide="list-checks"></i><span>Bucket</span></button>
         <button class="nav-item nav-btn" type="button" data-tab="album" data-target="album" aria-controls="album"><i data-lucide="images"></i><span>Album</span></button>
       </nav>
       <div id="app-status" class="sr-only" role="status" aria-live="polite"></div>

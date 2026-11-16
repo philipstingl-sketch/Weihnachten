@@ -25,6 +25,18 @@ export async function onRequestPut(context) {
   state.locationOverrides = { ...state.locationOverrides, ...(isRecord(incoming.locationOverrides) ? incoming.locationOverrides : {}) };
   state.mapHiddenPlaces = { ...state.mapHiddenPlaces, ...(isRecord(incoming.mapHiddenPlaces) ? incoming.mapHiddenPlaces : {}) };
   state.mapHiddenPhotoKeys = { ...state.mapHiddenPhotoKeys, ...(isRecord(incoming.mapHiddenPhotoKeys) ? incoming.mapHiddenPhotoKeys : {}) };
+  state.bucketDeletedIds = Array.from(new Set([...state.bucketDeletedIds, ...(Array.isArray(incoming.bucketDeletedIds) ? incoming.bucketDeletedIds.filter((id) => typeof id === 'string') : [])]));
+  const bucketItemsById = new Map(state.bucketItems.map((item) => [item.id, item]));
+  if (Array.isArray(incoming.bucketItems)) {
+    for (const item of incoming.bucketItems) {
+      if (!item || typeof item.id !== 'string' || typeof item.text !== 'string') continue;
+      const current = bucketItemsById.get(item.id);
+      const itemTime = Date.parse(item.updatedAt || item.createdAt || '') || 0;
+      const currentTime = Date.parse(current?.updatedAt || current?.createdAt || '') || 0;
+      if (!current || itemTime >= currentTime) bucketItemsById.set(item.id, item);
+    }
+  }
+  state.bucketItems = Array.from(bucketItemsById.values()).filter((item) => !state.bucketDeletedIds.includes(item.id));
 
   const deletedIds = new Set([
     ...state.deletedUploadedPhotoIds,
