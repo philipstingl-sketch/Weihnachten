@@ -1340,6 +1340,9 @@ const ALBUM_DATA = {
     let albumTurnDirection = '';
     let albumModalPhoto = null;
     const albumSelectedPhotos = new Set();
+    const albumLocationSelectedPhotos = new Set();
+    let albumLocationAssignMode = false;
+    let waitingForAlbumMapPoint = false;
     const albumDeleteSelection = new Set();
     let albumDeleteMode = false;
     const albumObjectUrls = new Map();
@@ -1650,7 +1653,11 @@ const ALBUM_DATA = {
       const media = isVideo
         ? '<video class="album-tile-video" src="' + escapeHtml(photo.src) + '" muted playsinline preload="metadata" aria-hidden="true"></video>'
         : '<img src="' + escapeHtml(photo.src) + '" alt="" loading="lazy" decoding="async">';
-      const select = selectable && !albumDeleteMode
+      const hasGps = photo.latitude !== null && photo.latitude !== undefined && photo.latitude !== '' && photo.longitude !== null && photo.longitude !== undefined && photo.longitude !== '' && Number.isFinite(Number(photo.latitude)) && Number.isFinite(Number(photo.longitude));
+      const hasLocation = Boolean(photo.location?.name || hasGps || LOCATIONS.some((location) => location.photos?.includes(photo.src)));
+      const select = albumLocationAssignMode && !hasLocation && !albumDeleteMode
+        ? '<label class="album-photo-select is-location-select"><input type="checkbox" data-album-location-select="' + escapeHtml(photo.key) + '" aria-label="Foto für Standort auswählen" ' + (albumLocationSelectedPhotos.has(photo.key) ? 'checked' : '') + '><span></span></label>'
+        : selectable && !albumLocationAssignMode && !albumDeleteMode
         ? '<label class="album-photo-select"><input type="checkbox" data-album-select="' + escapeHtml(photo.key) + '" aria-label="Für gemeinsames Datum auswählen" ' + (albumSelectedPhotos.has(photo.key) ? 'checked' : '') + '><span></span></label>'
         : '';
       const deleteSelect = albumDeleteMode
@@ -1696,6 +1703,55 @@ const ALBUM_DATA = {
       const confirmButton = document.querySelector('#album-delete-confirm');
       if (confirmButton) confirmButton.disabled = albumDeleteSelection.size === 0;
     }
+
+    function renderAlbumLocationControls() {
+      const startButton = document.querySelector('#album-location-mode');
+      const count = document.querySelector('#album-location-count');
+      const pickButton = document.querySelector('#album-location-pick');
+      const cancelButton = document.querySelector('#album-location-cancel');
+      if (!startButton || !count || !pickButton || !cancelButton) return;
+      startButton.hidden = albumLocationAssignMode;
+      count.hidden = !albumLocationAssignMode;
+      pickButton.hidden = !albumLocationAssignMode;
+      cancelButton.hidden = !albumLocationAssignMode;
+      count.textContent = albumLocationSelectedPhotos.size + ' ausgewählt';
+      pickButton.disabled = albumLocationSelectedPhotos.size === 0;
+      startButton.querySelector('span').textContent = 'Fotos ohne Standort auswählen';
+    }
+
+    document.querySelector('#album-content')?.addEventListener('change', (event) => {
+      const checkbox = event.target.closest('[data-album-location-select]');
+      if (!checkbox) return;
+      if (checkbox.checked) albumLocationSelectedPhotos.add(checkbox.dataset.albumLocationSelect);
+      else albumLocationSelectedPhotos.delete(checkbox.dataset.albumLocationSelect);
+      renderAlbumLocationControls();
+    });
+
+    document.querySelector('#album-location-mode')?.addEventListener('click', () => {
+      albumLocationAssignMode = true;
+      albumLocationSelectedPhotos.clear();
+      renderAlbumLocationControls();
+      renderAlbumPage();
+      document.querySelector('#album-location-tools')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    document.querySelector('#album-location-cancel')?.addEventListener('click', () => {
+      albumLocationAssignMode = false;
+      waitingForAlbumMapPoint = false;
+      albumLocationSelectedPhotos.clear();
+      renderAlbumLocationControls();
+      renderAlbumPage();
+    });
+
+    document.querySelector('#album-location-pick')?.addEventListener('click', () => {
+      if (!albumLocationSelectedPhotos.size) return;
+      waitingForAlbumMapPoint = true;
+      const mapNav = document.querySelector('.nav-btn[data-target="karte"]');
+      mapNav?.click();
+      const hint = document.querySelector('#map-location-pick-hint');
+      if (hint) hint.hidden = false;
+      setAlbumSyncStatus('Tippe auf der Karte auf den gewünschten Ort.', 'ready');
+    });
 
     function openAlbumPhoto(photo) {
       if (!photo) return;
@@ -1783,7 +1839,7 @@ const ALBUM_DATA = {
         const leftPhotos = finalPagePhotos.slice(0, Math.ceil(finalPagePhotos.length / 2));
         const rightPhotos = finalPagePhotos.slice(leftPhotos.length);
         const finalPhotoPages = finalPagePhotos.length
-          ? (albumDeleteMode ? '' : albumBatchFormMarkup()) +
+          ? (albumDeleteMode || albumLocationAssignMode ? '' : albumBatchFormMarkup()) +
             '<div class="album-spread album-final-undated-spread">' + albumBookPageMarkup(leftPhotos, 'is-left', true) + albumBookPageMarkup(rightPhotos, 'is-right', true) + '</div>'
           : '<div class="album-empty album-tools-empty"><div><span class="album-empty-icon"><i data-lucide="images" aria-hidden="true"></i></span><h2 class="font-display">' + escapeHtml(ALBUM_DATA.emptyTitle) + '</h2><p>' + escapeHtml(ALBUM_DATA.emptyDescription) + '</p></div></div>';
         albumContent.innerHTML = '<article class="album-week-page album-tools-page"><header class="album-week-header"><div><span class="pill">LETZTE SEITE · ' + (finalPagePhotos.length ? 'BILDER OHNE DATUM' : 'ALBUM PFLEGEN') + '</span><h2 class="font-display">' + (finalPagePhotos.length ? escapeHtml(ALBUM_DATA.undatedPageLabel) : 'Album pflegen') + '</h2><span class="album-week-range">' + (finalPagePhotos.length ? escapeHtml(ALBUM_DATA.undatedLabel) + ' · Hier sammeln sich alle Bilder ohne Datum.' : 'Hier kannst du eure Fotos ergänzen oder einzelne Erinnerungen entfernen.') + '</span></div><span class="album-week-count">' + (finalPagePhotos.length ? finalPagePhotos.length + ' Fotos' : '<i data-lucide="heart" aria-hidden="true"></i>') + '</span></header>' +
@@ -1883,12 +1939,12 @@ const ALBUM_DATA = {
       const pageMarker = isUndated ? 'DATUM IM EXPORT FEHLT' : (ALBUM_DATA.weekPrefix + ' ' + page.weekNumber);
       const leftPhotos = page.photos.slice(0, 4);
       const rightPhotos = page.photos.slice(4, 8);
-      const batchForm = isUndated && !albumDeleteMode ? albumBatchFormMarkup() : '';
+      const batchForm = isUndated && !albumDeleteMode && !albumLocationAssignMode ? albumBatchFormMarkup() : '';
       albumContent.innerHTML = '<article class="album-week-page"><header class="album-week-header"><div><span class="pill">' + escapeHtml(pageMarker) + '</span>' +
         (isUndated ? '' : (page.totalCount > 8 ? '<span class="pill">DOPPELSEITE</span>' : '')) +
         '<h2 class="font-display">' + escapeHtml(pageHeading) + '</h2><span class="album-week-range">' + escapeHtml(isUndated ? ALBUM_DATA.undatedLabel : startText + ' – ' + endText) + '</span></div>' +
         '<span class="album-week-count">' + page.totalCount + ' Fotos</span></header>' + batchForm +
-        '<div class="album-spread">' + albumBookPageMarkup(leftPhotos, 'is-left', isUndated) + albumBookPageMarkup(rightPhotos, 'is-right', isUndated) + '</div>' +
+        '<div class="album-spread">' + albumBookPageMarkup(leftPhotos, 'is-left', isUndated || albumLocationAssignMode) + albumBookPageMarkup(rightPhotos, 'is-right', isUndated || albumLocationAssignMode) + '</div>' +
         '<nav class="album-controls" aria-label="Albumseiten"><button class="album-page-button" type="button" data-album-prev ' + (albumPageIndex === 0 ? 'disabled' : '') + '>‹ ' + escapeHtml(ALBUM_DATA.previousLabel) + '</button>' +
         '<span class="album-page-indicator">' + (albumPageIndex + 1) + ' / ' + pages.length + '</span>' +
         '<button class="album-page-button" type="button" data-album-next ' + (albumPageIndex === pages.length - 1 ? 'disabled' : '') + '>' + escapeHtml(ALBUM_DATA.nextLabel) + ' ›</button></nav></article>';
@@ -2590,19 +2646,42 @@ const ALBUM_DATA = {
         const knownIds = new Set([...remoteIds, ...publishedPhotos.map((photo) => photo.id)]);
         const photos = [...remotePhotos.filter((photo) => !tombstones[photo.id]), ...publishedPhotos, ...localPhotos.filter((photo) => !knownIds.has(photo.id) && !tombstones[photo.id])];
         const dateOverrides = readRecord(ALBUM_DATA.dateOverridesStorageKey);
+        const locationOverrides = readRecord('fuer-dich-album-location-overrides');
         const points = [];
         photos.forEach((photo) => {
-          if (photo.latitude === null || photo.latitude === undefined || photo.latitude === '' || photo.longitude === null || photo.longitude === undefined || photo.longitude === '') return;
-          const lat = Number(photo.latitude);
-          const lon = Number(photo.longitude);
+          const savedLocation = locationOverrides['uploaded:' + photo.id];
+          const rawLat = savedLocation?.latitude ?? photo.latitude;
+          const rawLon = savedLocation?.longitude ?? photo.longitude;
+          if (rawLat === null || rawLat === undefined || rawLat === '' || rawLon === null || rawLon === undefined || rawLon === '') return;
+          const lat = Number(rawLat);
+          const lon = Number(rawLon);
           if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
           const point = window.L.latLng(lat, lon);
           points.push(point);
           const markerIcon = window.L.divIcon({ className: 'heart-marker-shell', html: '<span class="heart-marker" aria-hidden="true">♥</span>', iconSize: [34, 34], iconAnchor: [17, 28], popupAnchor: [0, -25] });
           const imageUrl = uploadedPhotoUrl(photo);
-          const title = photo.locationName || 'Ein gemeinsamer Ort';
+          const title = savedLocation?.name || photo.locationName || 'Ein gemeinsamer Ort';
           const dateValue = dateOverrides['uploaded:' + photo.id] || photo.capturedAt;
           const popup = `<div class="memory-popup"><strong>${escapeHtml(title)}</strong><small>${dateValue ? escapeHtml(dateValue.slice(0, 10)) : 'Unsere Erinnerung'}</small><div class="memory-popup-gallery"><img class="memory-popup-photo" src="${escapeHtml(imageUrl)}" alt="Gemeinsames Erinnerungsfoto"></div></div>`;
+          window.L.marker(point, { icon: markerIcon }).addTo(uploadedPhotoLayer).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
+        });
+        const albumPhotos = await getAlbumPhotos();
+        const assignedGroups = new Map();
+        albumPhotos.filter((photo) => !photo.uploaded && photo.location && Number.isFinite(Number(photo.location.latitude)) && Number.isFinite(Number(photo.location.longitude))).forEach((photo) => {
+          const lat = Number(photo.location.latitude);
+          const lon = Number(photo.location.longitude);
+          if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
+          const name = photo.location.name || 'Ein gemeinsamer Ort';
+          const key = `${name}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+          if (!assignedGroups.has(key)) assignedGroups.set(key, { name, lat, lon, photos: [] });
+          assignedGroups.get(key).photos.push(photo);
+        });
+        assignedGroups.forEach((group) => {
+          const point = window.L.latLng(group.lat, group.lon);
+          points.push(point);
+          const markerIcon = window.L.divIcon({ className: 'heart-marker-shell', html: '<span class="heart-marker" aria-hidden="true">♥</span>', iconSize: [34, 34], iconAnchor: [17, 28], popupAnchor: [0, -25] });
+          const gallery = group.photos.map((photo) => `<img class="memory-popup-photo" src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || 'Gemeinsames Erinnerungsfoto')}" loading="lazy" decoding="async">`).join('');
+          const popup = `<div class="memory-popup"><strong>${escapeHtml(group.name)}</strong><small>${group.photos.length} Erinnerungsfotos</small><div class="memory-popup-gallery">${gallery}</div></div>`;
           window.L.marker(point, { icon: markerIcon }).addTo(uploadedPhotoLayer).bindPopup(popup, { maxWidth: 260, maxHeight: 330 });
         });
         if (points.length) memoryMap.fitBounds(window.L.latLngBounds(points), { padding: [28, 28], maxZoom: 12 });
@@ -2626,6 +2705,34 @@ const ALBUM_DATA = {
 
       if (!memoryMap) {
         memoryMap = window.L.map(container, { zoomControl: true, minZoom: 2, maxZoom: 18, worldCopyJump: true, scrollWheelZoom: true });
+        memoryMap.on('click', (event) => {
+          if (!waitingForAlbumMapPoint || !albumLocationSelectedPhotos.size) return;
+          const placeName = window.prompt('Wie soll dieser Ort heißen?');
+          if (placeName === null) return;
+          const name = placeName.trim();
+          if (!name) {
+            window.alert('Gib dem Ort bitte einen Namen. Tippe dann erneut auf die Karte.');
+            return;
+          }
+          const overrides = readRecord('fuer-dich-album-location-overrides');
+          albumLocationSelectedPhotos.forEach((key) => {
+            overrides[key] = { name, latitude: event.latlng.lat, longitude: event.latlng.lng, coordinates: [event.latlng.lat, event.latlng.lng] };
+          });
+          if (!writeRecord('fuer-dich-album-location-overrides', overrides)) {
+            window.alert('Der Ort konnte auf diesem Gerät nicht gespeichert werden.');
+            return;
+          }
+          const assignedCount = albumLocationSelectedPhotos.size;
+          albumLocationSelectedPhotos.clear();
+          albumLocationAssignMode = false;
+          waitingForAlbumMapPoint = false;
+          const hint = document.querySelector('#map-location-pick-hint');
+          if (hint) hint.hidden = true;
+          renderAlbumLocationControls();
+          setAlbumSyncStatus(`${assignedCount} Fotos mit „${name}“ verknüpft.`, 'ready');
+          renderAlbumPage();
+          refreshUploadedMapPhotos();
+        });
         const imagery = window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
           attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
           maxZoom: 18,

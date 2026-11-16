@@ -102,6 +102,7 @@
           <div class="eyebrow"><span class="eyebrow-line"></span> UNSERE ORTE</div>
           <h1 id="karte-title" class="page-title font-display"></h1>
           <p id="karte-description" class="page-intro"></p>
+          <p id="map-location-pick-hint" class="map-location-pick-hint" hidden>Tippe auf die Karte, um den ausgewählten Fotos einen neuen Ort zuzuweisen.</p>
           <div id="memory-map" class="memory-map" role="application" aria-label="Interaktive Weltkarte unserer gemeinsamen Erinnerungsorte"></div>
           <p id="map-fallback" class="map-fallback" hidden></p>
         </section>
@@ -113,6 +114,12 @@
           <div class="album-topline">
             <p id="album-sync-status" class="album-sync-status" role="status" aria-live="polite" data-state="loading">Gemeinsamer Album-Speicher wird geprüft …</p>
             <button id="album-jump-last" class="album-jump-last" type="button"><i data-lucide="skip-forward" aria-hidden="true"></i><span>Zur letzten Seite</span></button>
+          </div>
+          <div class="album-location-tools" id="album-location-tools">
+            <button id="album-location-mode" class="album-jump-last" type="button"><i data-lucide="map-pin-plus" aria-hidden="true"></i><span>Fotos ohne Standort auswählen</span></button>
+            <span id="album-location-count" class="album-location-count" hidden>0 ausgewählt</span>
+            <button id="album-location-pick" class="album-jump-last" type="button" disabled hidden><i data-lucide="map" aria-hidden="true"></i><span>Auf Karte zuweisen</span></button>
+            <button id="album-location-cancel" class="album-jump-last" type="button" hidden>Abbrechen</button>
           </div>
           <audio id="album-song-audio" src="assets/audio/im-naechsten-leben.m4a" preload="none" playsinline webkit-playsinline hidden></audio>
           <button id="album-song-retry" class="album-song-retry" type="button" aria-label="Albumton starten" hidden><i data-lucide="volume-2" aria-hidden="true"></i><span>Ton starten</span></button>
