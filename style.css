@@ -374,6 +374,7 @@ button { font: inherit; }
 .album-sync-status { margin: -.25rem 0 .75rem; color: #cdbdc4; font-size: .68rem; line-height: 1.4; }
 .album-sync-status[data-state="ready"] { color: #b9e7c7; }
 .album-sync-status[data-state="error"] { color: #fda4af; }
+.album-sync-status[data-state="local"] { color: #f5d3a8; }
 .album-sync-status[data-state="saving"], .album-sync-status[data-state="loading"] { color: #e9c6cf; }
 .album-upload-heading { display: flex; align-items: flex-start; gap: .75rem; }
 .album-upload-icon { display: grid; width: 2.55rem; height: 2.55rem; flex: 0 0 auto; place-items: center; border: 1px solid rgba(253,164,175,.2); border-radius: .85rem; color: var(--blush); background: rgba(244,63,94,.11); }

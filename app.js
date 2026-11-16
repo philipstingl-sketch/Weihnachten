@@ -1534,7 +1534,7 @@ const ALBUM_DATA = {
         return true;
       })().catch(() => {
         albumCloudReady = false;
-        setAlbumSyncStatus('Cloud-Synchronisierung gerade nicht erreichbar; Änderungen bleiben vorerst auf diesem Gerät.', 'error');
+        setAlbumSyncStatus('Lokal gespeichert. Für alle Geräte: „Änderungen für die Website herunterladen“ und die Datei in GitHub hochladen.', 'local');
         return false;
       }).finally(() => { albumCloudLoading = null; });
       return albumCloudLoading;
@@ -2233,8 +2233,8 @@ const ALBUM_DATA = {
         renderAlbumUploadQueue();
         status.textContent = allPhotosSynced
           ? 'Die Fotos wurden gespeichert und mit euren Geräten synchronisiert.'
-          : 'Die Fotos wurden auf diesem Gerät gespeichert. Die Cloud-Synchronisierung wird noch eingerichtet.';
-        setAlbumSyncStatus(allPhotosSynced ? 'Auf allen Geräten synchronisiert.' : 'Fotos warten noch auf die Cloud-Synchronisierung.', allPhotosSynced ? 'ready' : 'error');
+          : 'Die Fotos wurden auf diesem Gerät gespeichert. Klicke unten auf „Änderungen für die Website herunterladen“, um sie für alle Geräte zu veröffentlichen.';
+        setAlbumSyncStatus(allPhotosSynced ? 'Auf allen Geräten synchronisiert.' : 'Lokal gespeichert. Exportiere die Änderungen für die Website.', allPhotosSynced ? 'ready' : 'local');
         albumPageIndex = 0;
         await renderAlbumPage();
         await refreshUploadedMapPhotos();
