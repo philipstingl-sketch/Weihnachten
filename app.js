@@ -4,6 +4,10 @@ const RELATIONSHIP_START = '2026-01-26T21:49:00';
 const WRAPPED_DATA = {
   startDate: RELATIONSHIP_START,
   audioPath: 'assets/audio/wrapped-song.mp3',
+  polaroidHint: 'Dreh jedes Bild um. Danach kommen eure Erinnerungen als Herz zusammen.',
+  polaroidFormingHint: 'Und all diese kleinen Momente gehören zusammen …',
+  polaroidHeartHint: 'Vier Erinnerungen. Ein Herz. Tippe ein Foto an, um es noch einmal umzudrehen.',
+  polaroidMissingDate: 'Aufnahmedatum nicht gespeichert',
   slides: [
     { type: 'counter', eyebrow: 'UNSER JAHR IN ZAHLEN', title: 'Seitdem ist jeder Tag <em>schöner.</em>', description: 'Seit unserem gemeinsamen Start sammeln wir kleine Momente, die sich ganz groß anfühlen.', caption: 'Und das ist erst der Anfang.' },
     { type: 'moments', eyebrow: 'UNSERE BILDER', title: 'Vier Erinnerungen,<br /><em>ganz nah bei uns.</em>', description: 'Ein Bild vom Anfang, unsere Lieblingsbilder und ein Ort, zu dem wir zurückmöchten.', photos: [
@@ -867,8 +871,12 @@ const ALBUM_DATA = {
       if (slide.type === 'counter') return `<div class="story-slide">${eyebrow}${heading}${intro}<div class="story-counter"><div class="counter-cell"><strong class="counter-value" data-time="days">0</strong><span class="counter-label">Tage</span></div><div class="counter-cell"><strong class="counter-value" data-time="hours">00</strong><span class="counter-label">Stunden</span></div><div class="counter-cell"><strong class="counter-value" data-time="minutes">00</strong><span class="counter-label">Minuten</span></div><div class="counter-cell"><strong class="counter-value" data-time="seconds">00</strong><span class="counter-label">Sekunden</span></div></div><p class="counter-caption">${escapeHtml(slide.caption)}</p>${next}</div>`;
 
       if (slide.type === 'moments') {
-        const photos = slide.photos.map((photo) => `<article class="wrapped-memory-card"><div class="wrapped-memory-photo"><span class="memory-photo-placeholder" aria-hidden="true"><i data-lucide="image"></i></span><img src="${escapeHtml(photo.path)}" alt="${escapeHtml(photo.alt)}"></div><div class="wrapped-memory-caption"><strong>${escapeHtml(photo.label)}</strong><span>${escapeHtml(photo.caption)}</span></div></article>`).join('');
-        return `<div class="story-slide">${eyebrow}${heading}${intro}<div class="wrapped-memory-grid">${photos}</div>${next}</div>`;
+        const photos = slide.photos.map((photo, photoIndex) => `<button class="wrapped-memory-card polaroid-card" type="button" data-polaroid="${photoIndex}" aria-pressed="false" aria-label="${escapeHtml(photo.label)} umdrehen">
+          <span class="polaroid-inner">
+            <span class="polaroid-face polaroid-front"><span class="wrapped-memory-photo"><span class="memory-photo-placeholder" aria-hidden="true"><i data-lucide="image"></i></span><img src="${escapeHtml(photo.path)}" alt="${escapeHtml(photo.alt)}"></span><span class="wrapped-memory-caption"><strong>${escapeHtml(photo.label)}</strong></span></span>
+            <span class="polaroid-face polaroid-back"><span class="polaroid-back-heart" aria-hidden="true">♥</span><strong>${escapeHtml(photo.label)}</strong><span class="polaroid-back-date" data-polaroid-date="${photoIndex}">Aufnahmedatum wird gesucht …</span><span class="polaroid-back-note">${escapeHtml(photo.caption)}</span><span class="polaroid-back-tape" aria-hidden="true"></span></span>
+          </span></button>`).join('');
+        return `<div class="story-slide">${eyebrow}${heading}${intro}<div class="wrapped-memory-grid polaroid-wall" data-polaroid-wall><span class="polaroid-heart-silhouette" aria-hidden="true">♥</span>${photos}</div><p class="polaroid-wall-hint" data-polaroid-hint>${escapeHtml(WRAPPED_DATA.polaroidHint)}</p>${next}</div>`;
       }
 
       if (slide.type === 'stats') {
@@ -911,6 +919,71 @@ const ALBUM_DATA = {
       updateWrappedProgress();
 
       stage.querySelectorAll('.wrapped-memory-photo img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
+      if (slide.type === 'moments') {
+        const wall = stage.querySelector('[data-polaroid-wall]');
+        const cards = Array.from(wall?.querySelectorAll('[data-polaroid]') || []);
+        const flipped = new Set();
+        const hint = stage.querySelector('[data-polaroid-hint]');
+        let heartTimer = 0;
+
+        cards.forEach((card) => card.addEventListener('click', () => {
+          if (wall.classList.contains('is-heart-formed')) {
+            wall.classList.remove('is-heart-formed');
+            cards.forEach((item) => {
+              item.classList.remove('is-flipped');
+              item.setAttribute('aria-pressed', 'false');
+              item.setAttribute('aria-label', `${slide.photos[Number(item.dataset.polaroid)]?.label || 'Erinnerung'} umdrehen`);
+            });
+            flipped.clear();
+            if (hint) hint.textContent = WRAPPED_DATA.polaroidHint;
+          }
+          if (card.classList.contains('is-flipped')) {
+            card.classList.remove('is-flipped');
+            card.setAttribute('aria-pressed', 'false');
+            card.setAttribute('aria-label', `${slide.photos[Number(card.dataset.polaroid)]?.label || 'Erinnerung'} umdrehen`);
+            flipped.delete(card.dataset.polaroid);
+          } else {
+            card.classList.add('is-flipped');
+            card.setAttribute('aria-pressed', 'true');
+            card.setAttribute('aria-label', `${slide.photos[Number(card.dataset.polaroid)]?.label || 'Erinnerung'}: Rückseite anzeigen`);
+            flipped.add(card.dataset.polaroid);
+          }
+          window.clearTimeout(heartTimer);
+          if (flipped.size === cards.length && cards.length) {
+            if (hint) hint.textContent = WRAPPED_DATA.polaroidFormingHint;
+            heartTimer = window.setTimeout(() => {
+              cards.forEach((item) => {
+                item.classList.remove('is-flipped');
+                item.setAttribute('aria-pressed', 'false');
+                item.setAttribute('aria-label', `${slide.photos[Number(item.dataset.polaroid)]?.label || 'Erinnerung'} umdrehen`);
+              });
+              flipped.clear();
+              wall.classList.add('is-heart-formed');
+              if (hint) hint.textContent = WRAPPED_DATA.polaroidHeartHint;
+            }, 650);
+          }
+        }));
+
+        slide.photos.forEach(async (photo, photoIndex) => {
+          const dateElement = stage.querySelector(`[data-polaroid-date="${photoIndex}"]`);
+          if (!dateElement) return;
+          let dateLabel = photo.dateLabel || '';
+          if (!dateLabel && window.exifr?.parse) {
+            try {
+              const response = await fetch(photo.path, { cache: 'force-cache' });
+              if (response.ok) {
+                const tags = await window.exifr.parse(await response.blob());
+                const dateValue = tags?.DateTimeOriginal || tags?.CreateDate || tags?.ModifyDate;
+                const captureDate = dateValue instanceof Date ? dateValue : (dateValue ? new Date(String(dateValue).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')) : null);
+                if (captureDate && Number.isFinite(captureDate.getTime())) {
+                  dateLabel = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }).format(captureDate);
+                }
+              }
+            } catch (_) { /* Fotos ohne auslesbare EXIF-Daten bekommen einen neutralen Hinweis. */ }
+          }
+          if (dateElement.isConnected) dateElement.textContent = dateLabel || WRAPPED_DATA.polaroidMissingDate;
+        });
+      }
       stage.querySelector('[data-story-next]')?.addEventListener('click', () => renderWrappedSlide(currentSlide + 1));
       stage.querySelector('[data-story-surprise]')?.addEventListener('click', () => {
         launchConfetti();
