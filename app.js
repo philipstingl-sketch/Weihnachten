@@ -6,17 +6,37 @@ const WRAPPED_DATA = {
   audioPath: 'assets/audio/wrapped-song.mp3',
   polaroidHint: 'Dreh jedes Bild um. Danach kommen eure Erinnerungen als Herz zusammen.',
   polaroidFormingHint: 'Und all diese kleinen Momente gehören zusammen …',
-  polaroidHeartHint: 'Vier Erinnerungen. Ein Herz. Tippe ein Foto an, um es noch einmal umzudrehen.',
+  polaroidHeartHint: 'Drei Erinnerungen. Ein Herz. Tippe ein Foto an, um es noch einmal umzudrehen.',
   polaroidMissingDate: 'Aufnahmedatum nicht gespeichert',
+  firstPhotoDateLoading: 'Euer erster gemeinsamer Moment',
+  firstPhotoDateMissing: 'Ein Anfang, den wir nie vergessen',
+  yearHeading: 'Monat für Monat <em>wir zwei.</em>',
+  yearDescription: 'Ein kleiner Rückblick auf die Monate, die ihr mit Fotos im Album festgehalten habt. Tippe einen Monat an, um die Bilder zu öffnen.',
+  yearEmpty: 'Sobald eure Fotos ein Datum haben, erscheinen eure gemeinsamen Monate hier.',
+  loveNotesHeading: 'Kleine Dinge, <em>die ich an dir liebe.</em>',
+  loveNotesDescription: 'Tippe die Karten an und entdecke, was ich dir sagen möchte.',
+  loveNotes: [
+    'Mit dir fühlen sich selbst gewöhnliche Tage besonders an.',
+    'Ich liebe die kleinen Momente, die nur uns gehören.',
+    'Bei dir darf ich ganz ich selbst sein.',
+    'Ich freue mich auf all die Erinnerungen, die noch vor uns liegen.'
+  ],
+  placeHeading: 'Ein Ort, <em>zu dem wir zurückwollen.</em>',
+  placeDescription: 'Manche Orte sind besonders, weil wir sie zusammen erlebt haben.',
+  placeName: 'Unser Sehnsuchtsort',
+  placeCaption: 'Hier wartet noch ein gemeinsames Abenteuer auf uns.',
   slides: [
     { type: 'counter', eyebrow: 'UNSER JAHR IN ZAHLEN', title: 'Seitdem ist jeder Tag <em>schöner.</em>', description: 'Seit unserem gemeinsamen Start sammeln wir kleine Momente, die sich ganz groß anfühlen.', caption: 'Und das ist erst der Anfang.' },
-    { type: 'moments', eyebrow: 'UNSERE BILDER', title: 'Vier Erinnerungen,<br /><em>ganz nah bei uns.</em>', description: 'Ein Bild vom Anfang, unsere Lieblingsbilder und ein Ort, zu dem wir zurückmöchten.', photos: [
-      { path: 'assets/photos/first-photo.jpg', alt: 'Unser erstes gemeinsames Bild', label: 'Unser erstes Bild', caption: 'Der Anfang von uns' },
+    { type: 'first-photo', eyebrow: 'DER ANFANG VON UNS', title: 'Unser erstes Bild <em>zusammen.</em>', description: 'Ein Foto, ein Augenblick – und der Anfang von so vielen Erinnerungen.', photo: { path: 'assets/photos/first-photo.jpg', alt: 'Unser erstes gemeinsames Bild', label: 'Unser erstes Bild', caption: 'Der Anfang von uns' } },
+    { type: 'moments', eyebrow: 'UNSERE LIEBLINGSBILDER', title: 'Kleine Momente,<br /><em>ganz nah bei uns.</em>', description: 'Dreh die Fotos um und entdecke die Erinnerungen auf der Rückseite.', photos: [
       { path: 'assets/photos/my-favorite.jpg', alt: 'Dein Lieblingsbild von euch', label: 'Mein Lieblingsbild', caption: 'Ein Moment, den ich liebe' },
       { path: 'assets/photos/your-favorite.jpg', alt: 'Ihr Lieblingsbild von euch', label: 'Dein Lieblingsbild', caption: 'Dein ganz besonderer Moment' },
       { path: 'assets/photos/return-place.jpg', alt: 'Ein Ort, zu dem ihr zurückmöchtet', label: 'Hier möchten wir zurück', caption: 'Unser nächstes kleines Abenteuer' }
     ] },
+    { type: 'year', eyebrow: 'MONAT FÜR MONAT', title: 'Unser Jahr in <em>Bildern.</em>', description: 'Die Fotos aus eurem Album ordnen sich nach Monaten. Tippe einen Monat an, um die Bilder zu öffnen.' },
     { type: 'stats', eyebrow: 'WIR ZWEI, GANZ IN ZAHLEN', title: 'Zusammen sind wir <em>ziemlich toll.</em>', description: 'Ein paar völlig wissenschaftliche Fakten über uns.', stats: [{ icon: 'messages-square', value: 'Unzählige', label: 'Sprachnachrichten' }, { icon: 'sun', value: '100%', label: 'gute Laune mit dir' }, { icon: 'laugh', value: 'Unendlich', label: 'Insider-Witze' }, { icon: 'heart', value: 'Immer mehr', label: 'Gründe, dich zu lieben' }] },
+    { type: 'love-notes', eyebrow: 'NUR FÜR DICH', title: 'Kleine Dinge, <em>die ich an dir liebe.</em>', description: 'Tippe jede Karte an und entdecke eine kleine Nachricht.' },
+    { type: 'place', eyebrow: 'EIN ORT FÜR IMMER', title: 'Hier möchten wir <em>wieder hin.</em>', description: 'Ein Ort, der noch auf ein gemeinsames Abenteuer wartet.', photo: 'assets/photos/return-place.jpg' },
     { type: 'soundtrack', eyebrow: 'UNSER SOUNDTRACK', title: 'Klingt nach <em>uns.</em>', description: 'Für den Song, bei dem du sofort an uns denken sollst.', songTitle: 'Unser Lied', artist: 'Dein Lieblingsmensch', coverLabel: '♪', playerLabel: 'Ein Song für uns zwei' },
     { type: 'finale', eyebrow: 'FROHE WEIHNACHTEN, MEIN HERZ', title: 'Mein schönstes Geschenk <em>bist du.</em>', message: 'Danke für jedes Lachen, jede Umarmung und all die kleinen Augenblicke. Ich freue mich auf alles, was wir noch zusammen erleben. Frohe Weihnachten, ich hab dich lieb.', buttonLabel: 'Überraschung starten' }
   ]
@@ -863,12 +883,15 @@ const ALBUM_DATA = {
     }
 
     function wrappedSlideMarkup(slide, index) {
-      const heading = `<h1 id="wrapped-title" class="story-title font-display">${slide.title}</h1>`;
+      const configuredTitle = slide.type === 'year' ? WRAPPED_DATA.yearHeading : slide.type === 'love-notes' ? WRAPPED_DATA.loveNotesHeading : slide.type === 'place' ? WRAPPED_DATA.placeHeading : slide.title;
+      const heading = `<h1 id="wrapped-title" class="story-title font-display">${configuredTitle}</h1>`;
       const intro = `<p class="story-copy">${escapeHtml(slide.description || '')}</p>`;
       const next = index < WRAPPED_DATA.slides.length - 1 ? '<div class="story-footer"><button class="story-next" type="button" data-story-next>Weiter <i data-lucide="arrow-right"></i></button></div>' : '';
       const eyebrow = `<div class="story-slide-head"><i data-lucide="sparkles"></i>${escapeHtml(slide.eyebrow)}</div>`;
 
       if (slide.type === 'counter') return `<div class="story-slide">${eyebrow}${heading}${intro}<div class="story-counter"><div class="counter-cell"><strong class="counter-value" data-time="days">0</strong><span class="counter-label">Tage</span></div><div class="counter-cell"><strong class="counter-value" data-time="hours">00</strong><span class="counter-label">Stunden</span></div><div class="counter-cell"><strong class="counter-value" data-time="minutes">00</strong><span class="counter-label">Minuten</span></div><div class="counter-cell"><strong class="counter-value" data-time="seconds">00</strong><span class="counter-label">Sekunden</span></div></div><p class="counter-caption">${escapeHtml(slide.caption)}</p>${next}</div>`;
+
+      if (slide.type === 'first-photo') return `<div class="story-slide">${eyebrow}${heading}${intro}<article class="wrapped-first-photo"><div class="wrapped-first-photo-frame"><img src="${escapeHtml(slide.photo.path)}" alt="${escapeHtml(slide.photo.alt)}"><span class="wrapped-first-photo-heart" aria-hidden="true">♥</span></div><p class="wrapped-first-photo-caption">${escapeHtml(slide.photo.caption)}</p><p class="wrapped-first-photo-date" data-first-photo-date>${escapeHtml(WRAPPED_DATA.firstPhotoDateLoading)}</p></article>${next}</div>`;
 
       if (slide.type === 'moments') {
         const photos = slide.photos.map((photo, photoIndex) => `<button class="wrapped-memory-card polaroid-card" type="button" data-polaroid="${photoIndex}" aria-pressed="false" aria-label="${escapeHtml(photo.label)} umdrehen">
@@ -876,8 +899,17 @@ const ALBUM_DATA = {
             <span class="polaroid-face polaroid-front"><span class="wrapped-memory-photo"><span class="memory-photo-placeholder" aria-hidden="true"><i data-lucide="image"></i></span><img src="${escapeHtml(photo.path)}" alt="${escapeHtml(photo.alt)}"></span><span class="wrapped-memory-caption"><strong>${escapeHtml(photo.label)}</strong></span></span>
             <span class="polaroid-face polaroid-back"><span class="polaroid-back-heart" aria-hidden="true">♥</span><strong>${escapeHtml(photo.label)}</strong><span class="polaroid-back-date" data-polaroid-date="${photoIndex}">Aufnahmedatum wird gesucht …</span><span class="polaroid-back-note">${escapeHtml(photo.caption)}</span><span class="polaroid-back-tape" aria-hidden="true"></span></span>
           </span></button>`).join('');
-        return `<div class="story-slide">${eyebrow}${heading}${intro}<div class="wrapped-memory-grid polaroid-wall" data-polaroid-wall><span class="polaroid-heart-silhouette" aria-hidden="true">♥</span>${photos}</div><p class="polaroid-wall-hint" data-polaroid-hint>${escapeHtml(WRAPPED_DATA.polaroidHint)}</p>${next}</div>`;
+        return `<div class="story-slide">${eyebrow}${heading}${intro}<div class="wrapped-memory-grid polaroid-wall" data-polaroid-wall data-card-count="${slide.photos.length}"><span class="polaroid-heart-silhouette" aria-hidden="true">♥</span>${photos}</div><p class="polaroid-wall-hint" data-polaroid-hint>${escapeHtml(WRAPPED_DATA.polaroidHint)}</p>${next}</div>`;
       }
+
+      if (slide.type === 'year') return `<div class="story-slide">${eyebrow}${heading}<p class="story-copy">${escapeHtml(WRAPPED_DATA.yearDescription)}</p><div class="wrapped-year-gallery" data-year-gallery aria-live="polite"><p class="wrapped-year-empty">Deine Monate werden gesammelt …</p></div>${next}</div>`;
+
+      if (slide.type === 'love-notes') {
+        const notes = WRAPPED_DATA.loveNotes.map((note, noteIndex) => `<button class="wrapped-love-note" type="button" data-love-note aria-pressed="false" aria-label="Liebesnachricht ${noteIndex + 1} öffnen"><span class="wrapped-love-note-inner"><span class="wrapped-love-note-cover"><i data-lucide="heart" aria-hidden="true"></i><small>FÜR DICH</small></span><span class="wrapped-love-note-message">${escapeHtml(note)}</span></span></button>`).join('');
+        return `<div class="story-slide">${eyebrow}${heading}<p class="story-copy">${escapeHtml(WRAPPED_DATA.loveNotesDescription)}</p><div class="wrapped-love-notes">${notes}</div>${next}</div>`;
+      }
+
+      if (slide.type === 'place') return `<div class="story-slide">${eyebrow}${heading}<p class="story-copy">${escapeHtml(WRAPPED_DATA.placeDescription)}</p><article class="wrapped-place-card"><div class="wrapped-place-photo"><img src="${escapeHtml(slide.photo)}" alt="Ein gemeinsamer Sehnsuchtsort" loading="lazy"><span class="wrapped-place-pin"><i data-lucide="map-pin" aria-hidden="true"></i></span></div><div class="wrapped-place-copy"><span class="wrapped-place-label">UNSER SEHNSUCHTSORT</span><h2>${escapeHtml(WRAPPED_DATA.placeName)}</h2><p>${escapeHtml(WRAPPED_DATA.placeCaption)}</p></div></article>${next}</div>`;
 
       if (slide.type === 'stats') {
         const stats = slide.stats.map((stat) => `<div class="stat-card"><span class="stat-icon"><i data-lucide="${escapeHtml(stat.icon)}"></i></span><strong class="stat-value">${escapeHtml(stat.value)}</strong><span class="stat-label">${escapeHtml(stat.label)}</span></div>`).join('');
@@ -890,6 +922,54 @@ const ALBUM_DATA = {
       }
 
       return `<div class="story-slide finale-slide">${eyebrow}<div class="finale-art">♥</div>${heading}<p class="finale-message">${escapeHtml(slide.message)}</p><div class="story-footer centered"><button class="story-surprise" type="button" data-story-surprise>${escapeHtml(slide.buttonLabel)} <i data-lucide="gift"></i></button></div></div>`;
+    }
+
+    async function wrappedPhotoDateLabel(path) {
+      if (!window.exifr?.parse) return '';
+      try {
+        const response = await fetch(path, { cache: 'force-cache' });
+        if (!response.ok) return '';
+        const tags = await window.exifr.parse(await response.blob());
+        const value = tags?.DateTimeOriginal || tags?.CreateDate || tags?.ModifyDate;
+        const date = value instanceof Date ? value : (value ? new Date(String(value).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')) : null);
+        return date && Number.isFinite(date.getTime())
+          ? new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+          : '';
+      } catch (_) { return ''; }
+    }
+
+    async function populateWrappedYear(stage) {
+      const gallery = stage.querySelector('[data-year-gallery]');
+      if (!gallery) return;
+      try {
+        const photos = (await getAlbumPhotos())
+          .filter((photo) => photo.mediaType !== 'video' && photo.dateObject && Number.isFinite(photo.dateObject.getTime()))
+          .sort((a, b) => a.dateObject - b.dateObject);
+        const months = new Map();
+        photos.forEach((photo) => {
+          const key = `${photo.dateObject.getFullYear()}-${String(photo.dateObject.getMonth() + 1).padStart(2, '0')}`;
+          if (!months.has(key)) months.set(key, { date: new Date(photo.dateObject.getFullYear(), photo.dateObject.getMonth(), 1), photos: [] });
+          months.get(key).photos.push(photo);
+        });
+        const entries = Array.from(months.values());
+        if (!entries.length) {
+          gallery.innerHTML = `<p class="wrapped-year-empty">${escapeHtml(WRAPPED_DATA.yearEmpty)}</p>`;
+          return;
+        }
+        gallery.innerHTML = entries.map((entry, monthIndex) => {
+          const photo = entry.photos[0];
+          const month = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(entry.date);
+          const countLabel = `${entry.photos.length} ${entry.photos.length === 1 ? 'Foto' : 'Fotos'}`;
+          return `<button class="wrapped-year-card" type="button" data-year-photo="${escapeHtml(photo.key)}" style="--month-delay:${Math.min(monthIndex, 8) * 45}ms" aria-label="${escapeHtml(month)}, ${countLabel}. Albumfotos öffnen"><span class="wrapped-year-photo"><img src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.caption || photo.alt || 'Erinnerung aus ' + month)}" loading="lazy" decoding="async"><span class="wrapped-year-date">${escapeHtml(new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long' }).format(photo.dateObject))}</span></span><span class="wrapped-year-caption"><strong>${escapeHtml(month)}</strong><small>${countLabel}</small></span></button>`;
+        }).join('');
+        gallery.querySelectorAll('[data-year-photo]').forEach((button) => button.addEventListener('click', () => {
+          const photo = photos.find((entry) => entry.key === button.dataset.yearPhoto);
+          if (photo) openAlbumPhoto(photo);
+        }));
+        gallery.querySelectorAll('img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
+      } catch (_) {
+        gallery.innerHTML = `<p class="wrapped-year-empty">${escapeHtml(WRAPPED_DATA.yearEmpty)}</p>`;
+      }
     }
 
     function updateWrappedCounter() {
@@ -916,9 +996,25 @@ const ALBUM_DATA = {
       const stage = storyRoot.querySelector('#story-stage');
       stage.innerHTML = wrappedSlideMarkup(slide, currentSlide);
       stage.classList.toggle('story-stage-moments', slide.type === 'moments');
+      stage.classList.toggle('story-stage-scroll', ['first-photo', 'moments', 'year', 'love-notes', 'place'].includes(slide.type));
       updateWrappedProgress();
 
       stage.querySelectorAll('.wrapped-memory-photo img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
+      stage.querySelectorAll('.wrapped-first-photo-frame img, .wrapped-place-photo img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
+      if (slide.type === 'first-photo') {
+        wrappedPhotoDateLabel(slide.photo.path).then((dateLabel) => {
+          const date = stage.querySelector('[data-first-photo-date]');
+          if (date?.isConnected) date.textContent = dateLabel || WRAPPED_DATA.firstPhotoDateMissing;
+        });
+      }
+      if (slide.type === 'year') populateWrappedYear(stage);
+      if (slide.type === 'love-notes') {
+        stage.querySelectorAll('[data-love-note]').forEach((card, noteIndex) => card.addEventListener('click', () => {
+          const isRevealed = card.classList.toggle('is-revealed');
+          card.setAttribute('aria-pressed', String(isRevealed));
+          card.setAttribute('aria-label', `Liebesnachricht ${noteIndex + 1} ${isRevealed ? 'schließen' : 'öffnen'}`);
+        }));
+      }
       if (slide.type === 'moments') {
         const wall = stage.querySelector('[data-polaroid-wall]');
         const cards = Array.from(wall?.querySelectorAll('[data-polaroid]') || []);
@@ -967,20 +1063,7 @@ const ALBUM_DATA = {
         slide.photos.forEach(async (photo, photoIndex) => {
           const dateElement = stage.querySelector(`[data-polaroid-date="${photoIndex}"]`);
           if (!dateElement) return;
-          let dateLabel = photo.dateLabel || '';
-          if (!dateLabel && window.exifr?.parse) {
-            try {
-              const response = await fetch(photo.path, { cache: 'force-cache' });
-              if (response.ok) {
-                const tags = await window.exifr.parse(await response.blob());
-                const dateValue = tags?.DateTimeOriginal || tags?.CreateDate || tags?.ModifyDate;
-                const captureDate = dateValue instanceof Date ? dateValue : (dateValue ? new Date(String(dateValue).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')) : null);
-                if (captureDate && Number.isFinite(captureDate.getTime())) {
-                  dateLabel = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }).format(captureDate);
-                }
-              }
-            } catch (_) { /* Fotos ohne auslesbare EXIF-Daten bekommen einen neutralen Hinweis. */ }
-          }
+          const dateLabel = photo.dateLabel || await wrappedPhotoDateLabel(photo.path);
           if (dateElement.isConnected) dateElement.textContent = dateLabel || WRAPPED_DATA.polaroidMissingDate;
         });
       }
@@ -997,7 +1080,7 @@ const ALBUM_DATA = {
 
     function initWrapped() {
       if (!storyRoot) return;
-      storyRoot.innerHTML = `<div class="story-topbar"><div class="story-progress">${wrappedProgressMarkup()}</div><button class="story-music" type="button" aria-label="Hintergrundmusik einschalten" aria-pressed="false"><i data-lucide="volume-x"></i></button></div><div class="story-stage" id="story-stage" role="group" aria-roledescription="Story"></div><p class="story-swipe-hint">Tippe links oder rechts, um durch die Stories zu gehen</p><audio src="${escapeHtml(WRAPPED_DATA.audioPath)}" preload="none" loop></audio>`;
+      storyRoot.innerHTML = `<div class="story-topbar"><div class="story-progress" style="grid-template-columns:repeat(${WRAPPED_DATA.slides.length},minmax(0,1fr))">${wrappedProgressMarkup()}</div><button class="story-music" type="button" aria-label="Hintergrundmusik einschalten" aria-pressed="false"><i data-lucide="volume-x"></i></button></div><div class="story-stage" id="story-stage" role="group" aria-roledescription="Story"></div><p class="story-swipe-hint">Tippe links oder rechts, um durch die Stories zu gehen</p><audio src="${escapeHtml(WRAPPED_DATA.audioPath)}" preload="none" loop></audio>`;
       wrappedAudio = storyRoot.querySelector('audio');
       wrappedAudio.volume = 0.5;
       wrappedMusicButton = storyRoot.querySelector('.story-music');

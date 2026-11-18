@@ -907,6 +907,9 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 .polaroid-wall.is-heart-formed .polaroid-card:nth-of-type(2) { top: 3%; right: 7%; bottom: auto; left: auto; transform: rotate(8deg); }
 .polaroid-wall.is-heart-formed .polaroid-card:nth-of-type(3) { top: 47%; left: 16%; bottom: auto; right: auto; transform: rotate(5deg); }
 .polaroid-wall.is-heart-formed .polaroid-card:nth-of-type(4) { top: 47%; right: 16%; bottom: auto; left: auto; transform: rotate(-5deg); }
+.polaroid-wall[data-card-count="3"].is-heart-formed .polaroid-card:nth-of-type(1) { top: 8%; left: 8%; bottom: auto; right: auto; transform: rotate(-9deg); }
+.polaroid-wall[data-card-count="3"].is-heart-formed .polaroid-card:nth-of-type(2) { top: 8%; right: 8%; bottom: auto; left: auto; transform: rotate(9deg); }
+.polaroid-wall[data-card-count="3"].is-heart-formed .polaroid-card:nth-of-type(3) { top: 43%; left: 29%; bottom: auto; right: auto; transform: rotate(1deg); }
 .polaroid-wall.is-heart-formed .polaroid-inner { animation: none; }
 .polaroid-wall.is-heart-formed + .polaroid-wall-hint { color: #f0c0c5; }
 .story-stage-moments .story-footer { margin-top: .65rem; }
@@ -919,4 +922,55 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
   .polaroid-card, .polaroid-inner, .polaroid-heart-silhouette, .polaroid-wall-hint { animation: none; transition: none; }
   .polaroid-card { opacity: 1; translate: none; scale: 1; }
   .polaroid-inner { translate: none; }
+}
+
+/* Added Wrapped chapters: the first photo, year-by-month album, love notes, and a shared place. */
+.story-stage-scroll { overflow-y: auto; justify-content: flex-start; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(241,181,189,.24) transparent; }
+.story-stage-scroll .story-slide { flex: 0 0 auto; width: 100%; }
+.wrapped-first-photo { width: min(100%, 21rem); margin: 1rem auto .2rem; padding: .7rem .7rem .55rem; border: 1px solid rgba(246,228,220,.2); border-radius: .24rem; color: #5b433c; background: linear-gradient(145deg,#fff9ef,#f0e2d3); box-shadow: 0 16px 38px rgba(8,5,7,.32); transform: rotate(-1deg); animation: wrapped-photo-enter .65s var(--ease-clean) both; }
+.wrapped-first-photo-frame { position: relative; display: grid; min-height: 12rem; max-height: 55dvh; aspect-ratio: .82; overflow: hidden; place-items: center; border: 1px solid rgba(91,67,53,.14); background: linear-gradient(145deg,#e7dbce,#cdb9a7); }
+.wrapped-first-photo-frame img { width: 100%; height: 100%; object-fit: contain; }
+.wrapped-first-photo-heart { position: absolute; right: .65rem; bottom: .6rem; color: #f1b5bd; font-size: 1.4rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,.35)); animation: heart-float 3.2s ease-in-out infinite; }
+.wrapped-first-photo-caption { margin: .45rem 0 0; color: #5d433c; font-family: 'Caveat',cursive; font-size: 1.25rem; font-weight: 600; text-align: center; }
+.wrapped-first-photo-date { margin: .05rem 0 0; color: #9b7168; font-family: 'Caveat',cursive; font-size: .95rem; text-align: center; }
+.wrapped-year-gallery { display: flex; gap: .65rem; overflow-x: auto; margin: 1rem -.2rem .25rem; padding: .2rem .2rem .75rem; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: rgba(241,181,189,.24) transparent; -webkit-overflow-scrolling: touch; }
+.wrapped-year-card { flex: 0 0 min(68%, 13rem); overflow: hidden; padding: .45rem; border: 1px solid rgba(246,228,220,.17); border-radius: .9rem; color: var(--cream); background: linear-gradient(145deg,rgba(255,248,242,.09),rgba(255,248,242,.035)); box-shadow: 0 9px 22px rgba(8,5,7,.19); text-align: left; scroll-snap-align: start; animation: photo-reveal .52s var(--month-delay,0ms) both; cursor: pointer; transition: transform .28s var(--ease-clean), border-color .28s ease, box-shadow .28s ease; }
+.wrapped-year-photo { position: relative; display: grid; height: 13.6rem; overflow: hidden; place-items: center; border-radius: .62rem; background: linear-gradient(145deg,#3b2d32,#211a1f); }
+.wrapped-year-photo img { width: 100%; height: 100%; object-fit: cover; }
+.wrapped-year-photo img[hidden] { display: none; }
+.wrapped-year-date { position: absolute; right: .45rem; bottom: .45rem; padding: .24rem .42rem; border: 1px solid rgba(255,255,255,.15); border-radius: 99px; color: #fff6f4; background: rgba(23,17,20,.65); font-size: .55rem; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.wrapped-year-caption { display: flex; align-items: center; justify-content: space-between; gap: .4rem; padding: .5rem .18rem .1rem; }
+.wrapped-year-caption strong { color: #f4e6e6; font-family: 'Playfair Display',serif; font-size: .83rem; font-weight: 500; text-transform: capitalize; }
+.wrapped-year-caption small { color: #c5b2b8; font-size: .56rem; }
+.wrapped-year-empty { flex: 1 0 100%; margin: 0; padding: .9rem; border: 1px dashed rgba(241,181,189,.2); border-radius: .85rem; color: #cbb9bd; font-size: .72rem; line-height: 1.55; }
+.wrapped-love-notes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; margin-top: 1.1rem; perspective: 900px; }
+.wrapped-love-note { min-width: 0; aspect-ratio: .88; padding: 0; border: 0; border-radius: .95rem; color: #49342f; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; animation: photo-reveal .52s calc(var(--note-index,0) * 70ms) both; }
+.wrapped-love-note:nth-child(2) { animation-delay: .07s; }.wrapped-love-note:nth-child(3) { animation-delay: .14s; }.wrapped-love-note:nth-child(4) { animation-delay: .21s; }
+.wrapped-love-note-inner { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .7s var(--ease-clean); }
+.wrapped-love-note.is-revealed .wrapped-love-note-inner { transform: rotateY(180deg); }
+.wrapped-love-note-cover, .wrapped-love-note-message { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .6rem; padding: .7rem; border: 1px solid rgba(246,228,220,.22); border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 11px 25px rgba(8,5,7,.19); }
+.wrapped-love-note-cover { color: #efbec4; background: radial-gradient(circle at 50% 38%,rgba(216,92,114,.18),transparent 62%),linear-gradient(145deg,rgba(55,37,44,.97),rgba(33,25,30,.98)); }
+.wrapped-love-note-cover svg { width: 1.5rem; height: 1.5rem; }
+.wrapped-love-note-cover small { color: #f0dadd; font-size: .54rem; letter-spacing: .15em; }
+.wrapped-love-note-message { color: #604942; font-family: 'Caveat',cursive; font-size: clamp(.95rem,4vw,1.22rem); line-height: 1.2; text-align: center; transform: rotateY(180deg); background: linear-gradient(145deg,#fff9ef,#ead7c7); }
+.wrapped-place-card { overflow: hidden; margin-top: 1rem; border: 1px solid rgba(246,228,220,.16); border-radius: 1.1rem; background: linear-gradient(145deg,rgba(255,248,242,.075),rgba(255,248,242,.025)); box-shadow: 0 13px 32px rgba(8,5,7,.22); animation: wrapped-photo-enter .65s var(--ease-clean) both; }
+.wrapped-place-photo { position: relative; display: grid; min-height: 14rem; max-height: 48dvh; aspect-ratio: .95; overflow: hidden; place-items: center; background: radial-gradient(circle at 72% 28%,rgba(241,181,189,.35),transparent 24%),linear-gradient(145deg,#583742,#241b21); }
+.wrapped-place-photo::after { position: absolute; inset: 30% 0 0; background: linear-gradient(transparent,rgba(20,14,18,.48)); content: ''; pointer-events: none; }
+.wrapped-place-photo img { width: 100%; height: 100%; object-fit: contain; }
+.wrapped-place-photo img[hidden] { display: none; }
+.wrapped-place-pin { position: absolute; z-index: 1; top: 50%; left: 50%; display: grid; width: 3rem; height: 3rem; place-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 50% 50% 50% 0; color: white; background: rgba(189,72,99,.84); box-shadow: 0 8px 26px rgba(8,5,7,.28); transform: translate(-50%,-62%) rotate(-45deg); animation: place-pin-drop .7s var(--ease-clean) both; }
+.wrapped-place-pin svg { width: 1.35rem; height: 1.35rem; transform: rotate(45deg); }
+.wrapped-place-copy { padding: .8rem .9rem .95rem; }
+.wrapped-place-label { color: #e9b6bf; font-size: .53rem; font-weight: 600; letter-spacing: .15em; }
+.wrapped-place-copy h2 { margin: .35rem 0 .25rem; color: var(--cream); font-family: 'Playfair Display',serif; font-size: 1.15rem; font-weight: 500; }
+.wrapped-place-copy p { margin: 0; color: #cbb9bd; font-size: .68rem; line-height: 1.5; }
+@keyframes wrapped-photo-enter { from { opacity: 0; transform: translateY(14px) rotate(-1deg) scale(.97); } to { opacity: 1; transform: translateY(0) rotate(-1deg) scale(1); } }
+@keyframes place-pin-drop { from { opacity: 0; transform: translate(-50%,-100%) rotate(-45deg) scale(.65); } 70% { transform: translate(-50%,-52%) rotate(-45deg) scale(1.08); } to { opacity: 1; transform: translate(-50%,-62%) rotate(-45deg) scale(1); } }
+@media (hover: hover) and (pointer: fine) {
+  .wrapped-year-card:hover { border-color: rgba(241,181,189,.38); box-shadow: 0 14px 28px rgba(8,5,7,.27); transform: translateY(-3px) rotate(-.4deg); }
+  .wrapped-love-note:hover { filter: brightness(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wrapped-first-photo, .wrapped-year-card, .wrapped-love-note, .wrapped-place-card, .wrapped-place-pin { animation: none; }
+  .wrapped-love-note-inner { transition: none; }
 }
