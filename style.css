@@ -836,3 +836,34 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 @media (prefers-reduced-motion: reduce) {
   .timeline-entry, .relationship-countdowns, .relationship-timeline { animation: none; }
 }
+
+/* Scroll-driven route: the rose-gold path fills as each chapter passes. */
+.relationship-timeline-list::before { background: linear-gradient(rgba(241,181,189,.22), rgba(241,181,189,.08)); }
+.timeline-route-fill { position: absolute; z-index: 1; top: .75rem; bottom: .75rem; left: .29rem; width: 2px; border-radius: 99px; background: linear-gradient(#f4d7b2, #d85c72 58%, #f1b5bd); box-shadow: 0 0 10px rgba(216,92,114,.35); pointer-events: none; transform: scaleY(var(--timeline-progress, 0)); transform-origin: top; transition: transform .18s linear; }
+.timeline-entry::before { transition: background-color .28s ease, box-shadow .3s ease, transform .3s var(--ease-clean); }
+.timeline-entry.is-visible::before { background: #f3c6bd; box-shadow: 0 0 0 4px rgba(241,181,189,.14), 0 0 14px rgba(216,92,114,.24); transform: scale(1.08); }
+.timeline-place-links { display: flex; flex-wrap: wrap; gap: .35rem; margin: -.15rem 0 .65rem; }
+.timeline-place-button { display: inline-flex; min-width: 0; min-height: 2rem; align-items: center; gap: .35rem; padding: .28rem .5rem; border: 1px solid rgba(215,187,145,.23); border-radius: 99px; color: #f1ddc4; background: rgba(215,187,145,.065); font: inherit; font-size: .59rem; cursor: pointer; transition: transform .24s var(--ease-clean), background-color .24s ease, border-color .24s ease, box-shadow .24s ease; }
+.timeline-place-button svg { width: .75rem; height: .75rem; flex: 0 0 auto; color: var(--blush); }
+.timeline-place-button span { overflow: hidden; max-width: 11rem; text-overflow: ellipsis; white-space: nowrap; }
+.timeline-place-button small { display: grid; min-width: 1.15rem; height: 1.15rem; flex: 0 0 auto; place-items: center; border-radius: 99px; color: #eedac0; background: rgba(255,248,242,.08); font-size: .5rem; }
+.heart-marker.timeline-pin-arrive { animation: marker-route-arrive .86s var(--ease-clean) both; }
+@keyframes marker-route-arrive {
+  0% { transform: rotate(-45deg) scale(.88) translateY(0); filter: brightness(1); }
+  35% { transform: rotate(-45deg) scale(1.28) translateY(-11px); filter: brightness(1.35); }
+  62% { transform: rotate(-45deg) scale(.96) translateY(2px); filter: brightness(1.12); }
+  82% { transform: rotate(-45deg) scale(1.08) translateY(-2px); }
+  100% { transform: rotate(-45deg) scale(1) translateY(0); filter: brightness(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .timeline-entry { opacity: 0; transform: translateY(12px); transition: opacity .55s ease, transform .6s var(--ease-clean); }
+  .timeline-entry.is-visible { opacity: 1; transform: translateY(0); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .timeline-place-button:hover { border-color: rgba(241,181,189,.44); background: rgba(216,92,114,.12); box-shadow: 0 4px 14px rgba(8,5,7,.14); transform: translateY(-1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timeline-route-fill, .timeline-entry::before, .timeline-place-button { transition: none; }
+  .timeline-entry { opacity: 1; transform: none; }
+  .heart-marker.timeline-pin-arrive { animation: none; }
+}

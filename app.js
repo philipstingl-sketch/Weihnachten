@@ -1199,6 +1199,21 @@ const ALBUM_DATA = {
           groups.get(key).photos.push(photo);
         });
 
+        const getTimelinePlace = (photo) => {
+          const saved = photo.location;
+          const hasCoordinates = (latitude, longitude) => latitude !== null && latitude !== undefined && latitude !== '' && longitude !== null && longitude !== undefined && longitude !== '' && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180;
+          if (saved && hasCoordinates(saved.latitude, saved.longitude)) {
+            return { id: '', name: saved.name || photo.locationName || 'Gemeinsamer Ort', latitude: Number(saved.latitude), longitude: Number(saved.longitude) };
+          }
+          if (hasCoordinates(photo.latitude, photo.longitude)) {
+            return { id: '', name: photo.locationName || 'Gemeinsamer Ort', latitude: Number(photo.latitude), longitude: Number(photo.longitude) };
+          }
+          const staticIndex = LOCATIONS.findIndex((location) => location.photos?.includes(photo.src));
+          if (staticIndex < 0) return null;
+          const location = LOCATIONS[staticIndex];
+          return { id: `static:${staticIndex}`, name: location.name, latitude: Number(location.coordinates[0]), longitude: Number(location.coordinates[1]) };
+        };
+
         const startEntry = `<article class="timeline-entry timeline-start-entry"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(COUNTDOWN_DATA.relationshipStartTitle)}</h3><span class="timeline-entry-count">Der Anfang</span></div><p class="timeline-entry-note">${escapeHtml(COUNTDOWN_DATA.relationshipStartNote)}</p><span class="timeline-start-icon"><i data-lucide="heart" aria-hidden="true"></i></span></div></article>`;
         const groupEntries = Array.from(groups.values()).sort((a, b) => a.date - b.date).map((group, groupIndex) => {
           const photos = group.photos;
@@ -1208,22 +1223,75 @@ const ALBUM_DATA = {
             const extra = index === 2 && photos.length > 3 ? `<span class="timeline-photo-more">+${photos.length - 2}</span>` : '';
             return `<button class="timeline-photo" type="button" data-timeline-photo="${escapeHtml(photo.key)}" aria-label="Erinnerungsfoto vom ${escapeHtml(albumDateLabel(photo.dateObject))} öffnen"><img src="${escapeHtml(photo.src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">${extra}</button>`;
           }).join('');
-          const location = photos.find((photo) => photo.location?.name || photo.locationName)?.location?.name || photos.find((photo) => photo.locationName)?.locationName;
-          const note = location ? `${photos.length} datierte Erinnerungen · ${location}` : `${photos.length} datierte ${photos.length === 1 ? 'Erinnerung' : 'Erinnerungen'} im Album`;
-          return `<article class="timeline-entry" style="animation-delay:${Math.min(groupIndex, 10) * 35}ms"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(dateLabel)}</h3><span class="timeline-entry-count">${photos.length} ${photos.length === 1 ? 'Foto' : 'Fotos'}</span></div><p class="timeline-entry-note">${escapeHtml(note)}</p><div class="timeline-photo-row">${photoButtons}</div></div></article>`;
+          const placesByKey = new Map();
+          photos.forEach((photo) => {
+            const place = getTimelinePlace(photo);
+            if (!place || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) return;
+            const key = place.id || `${place.name}|${place.latitude.toFixed(5)}|${place.longitude.toFixed(5)}`;
+            if (!placesByKey.has(key)) placesByKey.set(key, { ...place, photoCount: 0 });
+            placesByKey.get(key).photoCount += 1;
+          });
+          const places = Array.from(placesByKey.values());
+          const note = places.length
+            ? `${photos.length} datierte Erinnerungen, verteilt auf ${places.length} ${places.length === 1 ? 'Ort' : 'Orte'}`
+            : `${photos.length} datierte ${photos.length === 1 ? 'Erinnerung' : 'Erinnerungen'} im Album`;
+          const placeButtons = places.map((place) => `<button class="timeline-place-button" type="button" data-timeline-place="${escapeHtml(place.id)}" data-latitude="${place.latitude}" data-longitude="${place.longitude}" data-place-name="${escapeHtml(place.name)}" aria-label="${escapeHtml(place.name)} auf der Karte öffnen"><i data-lucide="map-pin" aria-hidden="true"></i><span>${escapeHtml(place.name)}</span><small>${place.photoCount}</small></button>`).join('');
+          return `<article class="timeline-entry" style="transition-delay:${Math.min(groupIndex, 10) * 35}ms"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(dateLabel)}</h3><span class="timeline-entry-count">${photos.length} ${photos.length === 1 ? 'Foto' : 'Fotos'}</span></div><p class="timeline-entry-note">${escapeHtml(note)}</p>${placeButtons ? `<div class="timeline-place-links">${placeButtons}</div>` : ''}<div class="timeline-photo-row">${photoButtons}</div></div></article>`;
         });
-        list.innerHTML = startEntry + (groupEntries.length ? groupEntries.join('') : '<p class="timeline-empty">Sobald eure Bilder ein Datum haben, erscheinen sie hier automatisch – Monat für Monat, direkt aus dem Album.</p>');
+        list.innerHTML = '<span class="timeline-route-fill" aria-hidden="true"></span>' + startEntry + (groupEntries.length ? groupEntries.join('') : '<p class="timeline-empty">Sobald eure Bilder ein Datum haben, erscheinen sie hier automatisch – Monat für Monat, direkt aus dem Album.</p>');
         list.querySelectorAll('[data-timeline-photo]').forEach((button) => button.addEventListener('click', () => {
           const photo = albumPhotos.find((entry) => entry.key === button.dataset.timelinePhoto);
           if (photo) openAlbumPhoto(photo);
         }));
+        list.querySelectorAll('[data-timeline-place]').forEach((button) => button.addEventListener('click', () => openTimelinePlace(button)));
         list.querySelectorAll('.timeline-photo img').forEach((image) => image.addEventListener('error', () => { image.closest('.timeline-photo')?.remove(); }, { once: true }));
+        observeTimelineEntries();
+        updateTimelineRouteProgress();
         if (window.lucide) window.lucide.createIcons();
       } catch (_) {
         list.innerHTML = `<article class="timeline-entry timeline-start-entry"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(COUNTDOWN_DATA.relationshipStartTitle)}</h3><span class="timeline-entry-count">Der Anfang</span></div><p class="timeline-entry-note">${escapeHtml(COUNTDOWN_DATA.relationshipStartNote)}</p><span class="timeline-start-icon"><i data-lucide="heart" aria-hidden="true"></i></span></div></article><p class="timeline-empty">Eure weiteren Kapitel erscheinen hier, sobald Albumdaten verfügbar sind.</p>`;
         if (window.lucide) window.lucide.createIcons();
       }
     }
+
+    let timelineScrollFrame = 0;
+    let timelineEntryObserver = null;
+    function observeTimelineEntries() {
+      const entries = document.querySelectorAll('#relationship-timeline-list .timeline-entry');
+      if (!('IntersectionObserver' in window)) {
+        entries.forEach((entry) => entry.classList.add('is-visible'));
+        return;
+      }
+      timelineEntryObserver?.disconnect();
+      timelineEntryObserver = new IntersectionObserver((observations) => {
+        observations.forEach((observation) => {
+          if (!observation.isIntersecting) return;
+          observation.target.classList.add('is-visible');
+          timelineEntryObserver.unobserve(observation.target);
+        });
+      }, { root: document.querySelector('#main-content'), threshold: .12, rootMargin: '0px 0px -5% 0px' });
+      entries.forEach((entry) => timelineEntryObserver.observe(entry));
+    }
+
+    function updateTimelineRouteProgress() {
+      timelineScrollFrame = 0;
+      const list = document.querySelector('#relationship-timeline-list');
+      const main = document.querySelector('#main-content');
+      if (!list || !main) return;
+      const timelineRect = list.getBoundingClientRect();
+      const mainRect = main.getBoundingClientRect();
+      const readingPoint = mainRect.top + main.clientHeight * .72;
+      const progress = Math.max(0, Math.min(1, (readingPoint - timelineRect.top - 12) / Math.max(1, list.scrollHeight - 24)));
+      list.style.setProperty('--timeline-progress', String(progress));
+    }
+
+    function scheduleTimelineRouteProgress() {
+      if (timelineScrollFrame) return;
+      timelineScrollFrame = window.requestAnimationFrame(updateTimelineRouteProgress);
+    }
+
+    document.querySelector('#main-content')?.addEventListener('scroll', scheduleTimelineRouteProgress, { passive: true });
+    window.addEventListener('resize', scheduleTimelineRouteProgress, { passive: true });
 
     function revealCoupon(id, canvas) {
       const card = Array.from(document.querySelectorAll('[data-coupon-card]')).find((item) => item.dataset.couponCard === id);
@@ -3063,6 +3131,45 @@ const ALBUM_DATA = {
       refreshUploadedMapPhotos();
     }
 
+    function openTimelinePlace(button) {
+      const latitude = Number(button.dataset.latitude);
+      const longitude = Number(button.dataset.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !window.L) return;
+      const requestedId = button.dataset.timelinePlace;
+      const requestedName = button.dataset.placeName || 'Unser Erinnerungsort';
+      showTab('karte');
+      initializeMap();
+      let attempts = 0;
+      const findAndOpenPin = () => {
+        if (!memoryMap) return;
+        const places = Array.from(mapManagedPlaces.values());
+        const place = places.find((item) => requestedId && item.id === requestedId)
+          || places.find((item) => Math.abs(item.latitude - latitude) < .0005 && Math.abs(item.longitude - longitude) < .0005)
+          || places.find((item) => item.name.localeCompare(requestedName, 'de', { sensitivity: 'base' }) === 0);
+        if (place?.marker) {
+          window.setTimeout(() => {
+            place.marker.openPopup();
+            const heart = place.marker.getElement()?.querySelector('.heart-marker');
+            if (heart) {
+              heart.classList.remove('timeline-pin-arrive');
+              void heart.offsetWidth;
+              heart.classList.add('timeline-pin-arrive');
+              window.setTimeout(() => heart.classList.remove('timeline-pin-arrive'), 1000);
+            }
+          }, 700);
+        } else if (attempts < 18) {
+          attempts += 1;
+          window.setTimeout(findAndOpenPin, 180);
+        }
+      };
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        if (!memoryMap) return;
+        memoryMap.invalidateSize(true);
+        memoryMap.setView([latitude, longitude], Math.max(memoryMap.getZoom(), 13), { animate: true, duration: .7 });
+        window.setTimeout(findAndOpenPin, 720);
+      }));
+    }
+
     function handleMapPlaceAction(event) {
       const button = event.target.closest('[data-map-place-action]');
       if (!button) return;
@@ -3394,6 +3501,7 @@ const ALBUM_DATA = {
         if (getDailyCouponState().day !== renderedCouponDay) renderCoupons();
         updateRelationshipCountdowns();
         renderRelationshipTimeline();
+        window.setTimeout(() => { observeTimelineEntries(); scheduleTimelineRouteProgress(); }, 80);
         refreshSharedAlbumState(true).then(() => {
           dailyCouponMemoryState = null;
           renderedCouponDay = '';
