@@ -2452,8 +2452,9 @@ const ALBUM_DATA = {
       const endText = !isUndated ? new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }).format(page.end) : ALBUM_DATA.undatedLabel;
       const pageHeading = isUndated ? ALBUM_DATA.undatedPageLabel : 'Eine Woche mit uns';
       const pageMarker = isUndated ? 'DATUM IM EXPORT FEHLT' : (ALBUM_DATA.weekPrefix + ' ' + page.weekNumber);
-      const leftPhotos = page.photos.slice(0, 4);
-      const rightPhotos = page.photos.slice(4, 8);
+      const pageMidpoint = Math.ceil(page.photos.length / 2);
+      const leftPhotos = page.photos.slice(0, Math.min(4, pageMidpoint));
+      const rightPhotos = page.photos.slice(pageMidpoint, pageMidpoint + 4);
       const batchForm = isUndated && !albumDeleteMode && !albumLocationAssignMode ? albumBatchFormMarkup() : '';
       albumContent.innerHTML = '<article class="album-week-page"><header class="album-week-header"><div><span class="pill">' + escapeHtml(pageMarker) + '</span>' +
         (isUndated ? '' : (page.totalCount > 8 ? '<span class="pill">DOPPELSEITE</span>' : '')) +

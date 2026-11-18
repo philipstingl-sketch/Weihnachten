@@ -966,6 +966,7 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 .wrapped-place-label { color: #e9b6bf; font-size: .53rem; font-weight: 600; letter-spacing: .15em; }
 .wrapped-place-copy h2 { margin: .35rem 0 .25rem; color: var(--cream); font-family: 'Playfair Display',serif; font-size: 1.15rem; font-weight: 500; }
 .wrapped-place-copy p { margin: 0; color: #cbb9bd; font-size: .68rem; line-height: 1.5; }
+.album-week-header .album-week-range { border-color: rgba(242,207,198,.3); color: #f4ddd3; background: rgba(255,241,228,.09); text-shadow: 0 1px 8px rgba(0,0,0,.22); }
 @keyframes wrapped-photo-enter { from { opacity: 0; transform: translateY(14px) rotate(-1deg) scale(.97); } to { opacity: 1; transform: translateY(0) rotate(-1deg) scale(1); } }
 @keyframes place-pin-drop { from { opacity: 0; transform: translate(-50%,-100%) rotate(-45deg) scale(.65); } 70% { transform: translate(-50%,-52%) rotate(-45deg) scale(1.08); } to { opacity: 1; transform: translate(-50%,-62%) rotate(-45deg) scale(1); } }
 @media (hover: hover) and (pointer: fine) {
