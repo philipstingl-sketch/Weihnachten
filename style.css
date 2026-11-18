@@ -892,8 +892,9 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 .polaroid-front .wrapped-memory-photo { flex: 1 1 auto; width: 100%; min-height: 0; aspect-ratio: auto; border: 1px solid rgba(91,67,53,.12); background: linear-gradient(145deg,#e5d7c8,#cdb9a7); }
 .polaroid-front .wrapped-memory-photo img { background: #e9ddcf; object-fit: contain; }
 .polaroid-front .memory-photo-placeholder { top: 50%; color: rgba(72,53,46,.62); }
-.polaroid-front .wrapped-memory-caption { min-height: 2rem; align-content: center; padding: .28rem .1rem 0; text-align: center; }
+.polaroid-front .wrapped-memory-caption { min-height: 2.25rem; align-content: center; gap: .08rem; padding: .23rem .1rem 0; text-align: center; }
 .polaroid-front .wrapped-memory-caption strong { overflow: hidden; color: #5d433c; font-family: 'Caveat',cursive; font-size: clamp(.92rem,3.7vw,1.16rem); font-weight: 600; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+.polaroid-front-date { overflow: hidden; color: #8c6a60; font-family: 'Caveat',cursive; font-size: clamp(.52rem,2.35vw,.67rem); font-weight: 500; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .polaroid-back { align-items: center; justify-content: center; gap: .42rem; padding: .72rem .55rem; color: #604942; text-align: center; transform: rotateY(180deg); background: radial-gradient(ellipse at 50% 18%,rgba(255,255,255,.5),transparent 55%),linear-gradient(150deg,#f8efe3,#e9d8c8); }
 .polaroid-back-heart { color: #ce7182; font-size: 1.65rem; line-height: 1; text-shadow: 0 3px 12px rgba(206,113,130,.22); }
 .polaroid-back strong { color: #49342f; font-family: 'Playfair Display',serif; font-size: clamp(.72rem,3vw,.9rem); font-weight: 600; line-height: 1.15; }
@@ -938,7 +939,7 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 .wrapped-year-photo { position: relative; display: grid; height: 13.6rem; overflow: hidden; place-items: center; border-radius: .62rem; background: linear-gradient(145deg,#3b2d32,#211a1f); }
 .wrapped-year-photo img { width: 100%; height: 100%; object-fit: cover; }
 .wrapped-year-photo img[hidden] { display: none; }
-.wrapped-year-date { position: absolute; right: .45rem; bottom: .45rem; padding: .24rem .42rem; border: 1px solid rgba(255,255,255,.15); border-radius: 99px; color: #fff6f4; background: rgba(23,17,20,.65); font-size: .55rem; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.wrapped-year-date-caption { display: block; overflow: hidden; padding: .28rem .15rem .05rem; color: #dfbdb5; font-family: 'Caveat',cursive; font-size: .82rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
 .wrapped-year-caption { display: flex; align-items: center; justify-content: space-between; gap: .4rem; padding: .5rem .18rem .1rem; }
 .wrapped-year-caption strong { color: #f4e6e6; font-family: 'Playfair Display',serif; font-size: .83rem; font-weight: 500; text-transform: capitalize; }
 .wrapped-year-caption small { color: #c5b2b8; font-size: .56rem; }
@@ -958,6 +959,7 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 .wrapped-place-photo::after { position: absolute; inset: 30% 0 0; background: linear-gradient(transparent,rgba(20,14,18,.48)); content: ''; pointer-events: none; }
 .wrapped-place-photo img { width: 100%; height: 100%; object-fit: contain; }
 .wrapped-place-photo img[hidden] { display: none; }
+.wrapped-place-date-caption { margin: 0; padding: .32rem .7rem .08rem; color: #dfbdb5; font-family: 'Caveat',cursive; font-size: .9rem; text-align: center; }
 .wrapped-place-pin { position: absolute; z-index: 1; top: 50%; left: 50%; display: grid; width: 3rem; height: 3rem; place-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 50% 50% 50% 0; color: white; background: rgba(189,72,99,.84); box-shadow: 0 8px 26px rgba(8,5,7,.28); transform: translate(-50%,-62%) rotate(-45deg); animation: place-pin-drop .7s var(--ease-clean) both; }
 .wrapped-place-pin svg { width: 1.35rem; height: 1.35rem; transform: rotate(45deg); }
 .wrapped-place-copy { padding: .8rem .9rem .95rem; }
