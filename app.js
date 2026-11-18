@@ -16,10 +16,10 @@ const WRAPPED_DATA = {
   loveNotesHeading: 'Kleine Dinge, <em>die ich an dir liebe.</em>',
   loveNotesDescription: 'Tippe die Karten an und entdecke, was ich dir sagen möchte.',
   loveNotes: [
-    'Mit dir fühlen sich selbst gewöhnliche Tage besonders an.',
     'Ich liebe die kleinen Momente, die nur uns gehören.',
-    'Bei dir darf ich ganz ich selbst sein.',
-    'Ich freue mich auf all die Erinnerungen, die noch vor uns liegen.'
+    'Ich freue mich auf all die Erinnerungen, die noch vor uns liegen.',
+    'Bei dir kann ich einfach ich sein.',
+    'Du machst mein Leben schöner, einfach weil es dich gibt.'
   ],
   placeHeading: 'Ein Ort, <em>zu dem wir zurückwollen.</em>',
   placeDescription: 'Manche Orte sind besonders, weil wir sie zusammen erlebt haben.',
