@@ -12,6 +12,8 @@ export const emptyAlbumState = () => ({
   mapHiddenPhotoKeys: {},
   bucketItems: [],
   bucketDeletedIds: [],
+  unlockedLetters: [],
+  dailyCouponState: null,
   uploadedPhotos: [],
   updatedAt: new Date().toISOString()
 });
@@ -54,6 +56,8 @@ export async function readAlbumState(bucket) {
         mapHiddenPhotoKeys: isRecord(stored.mapHiddenPhotoKeys) ? stored.mapHiddenPhotoKeys : {},
         bucketItems: Array.isArray(stored.bucketItems) ? stored.bucketItems : [],
         bucketDeletedIds: Array.isArray(stored.bucketDeletedIds) ? stored.bucketDeletedIds : [],
+        unlockedLetters: Array.isArray(stored.unlockedLetters) ? stored.unlockedLetters.filter((id) => typeof id === 'string') : [],
+        dailyCouponState: isRecord(stored.dailyCouponState) ? stored.dailyCouponState : null,
         uploadedPhotos: Array.isArray(stored.uploadedPhotos) ? stored.uploadedPhotos : []
       },
       exists: true

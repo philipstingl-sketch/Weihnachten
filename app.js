@@ -1,6 +1,8 @@
+const RELATIONSHIP_START = '2026-01-26T21:49:00';
+
 // Persönliche Inhalte: Texte, Daten, Gutscheine, Spielwerte und Briefe hier anpassen.
 const WRAPPED_DATA = {
-  startDate: '2026-01-26T21:49:00',
+  startDate: RELATIONSHIP_START,
   audioPath: 'assets/audio/wrapped-song.mp3',
   slides: [
     { type: 'counter', eyebrow: 'UNSER JAHR IN ZAHLEN', title: 'Seitdem ist jeder Tag <em>schöner.</em>', description: 'Seit unserem gemeinsamen Start sammeln wir kleine Momente, die sich ganz groß anfühlen.', caption: 'Und das ist erst der Anfang.' },
@@ -59,6 +61,18 @@ const DATES_DATA = {
     { id: 'lieblingssong', icon: '🎵', title: 'Wunsch-Song-Date', detail: 'Deine Musik, unser gemütlicher Abend.' }
   ],
   dailyStateStorageKey: 'fuer-dich-daily-coupons'
+};
+
+// Wiederkehrende Tage: Monat und Tag lassen sich hier einfach ändern.
+const COUNTDOWN_DATA = {
+  sectionTitle: 'Noch ein kleines Stück bis zu <em>unserem Moment.</em>',
+  events: [
+    { id: 'anniversary', title: 'Unser Jahrestag', month: 1, day: 26, hour: 21, minute: 49, icon: 'heart', note: 'Seit dem 26. Januar 2026 um 21:49 Uhr.' },
+    { id: 'new-year', title: 'Silvester', month: 12, day: 31, hour: 0, minute: 0, icon: 'sparkles', note: 'Ein neues Jahr mit dir wartet.' },
+    { id: 'valentine', title: 'Valentinstag', month: 2, day: 14, hour: 0, minute: 0, icon: 'heart-handshake', note: 'Ein Tag extra für uns.' }
+  ],
+  relationshipStartTitle: 'Hier begann unser Wir',
+  relationshipStartNote: '26. Januar 2026 · 21:49 Uhr'
 };
 
 const GAME_DATA = {
@@ -694,12 +708,27 @@ const ALBUM_DATA = {
   function writeRecord(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides', 'fuer-dich-map-hidden-places', 'fuer-dich-map-hidden-photo-keys', BUCKET_LIST_STORAGE_KEY, BUCKET_LIST_DELETED_KEY].includes(key)) {
+      if (['fuer-dich-album-date-overrides', 'fuer-dich-album-deleted-photos', 'fuer-dich-album-deleted-uploaded-photos', 'fuer-dich-album-location-overrides', 'fuer-dich-map-hidden-places', 'fuer-dich-map-hidden-photo-keys', BUCKET_LIST_STORAGE_KEY, BUCKET_LIST_DELETED_KEY, DATES_DATA.dailyStateStorageKey, TREASURE_DATA.unlockedStorageKey].includes(key)) {
         window.__fuerDichSyncAlbumState?.();
       }
       return true;
     }
     catch (_) { return false; }
+  }
+
+  function mergeDailyCouponState(primary, secondary) {
+    const valid = (state) => state && typeof state.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(state.day);
+    if (!valid(primary)) return valid(secondary) ? secondary : {};
+    if (!valid(secondary) || primary.day > secondary.day) return primary;
+    if (secondary.day > primary.day) return secondary;
+    const ids = Array.isArray(primary.ids) && primary.ids.length ? primary.ids : (secondary.ids || []);
+    const inIds = (value) => Array.isArray(value) ? value.filter((id) => ids.includes(id)) : [];
+    return {
+      day: primary.day,
+      ids,
+      revealed: Array.from(new Set([...inIds(primary.revealed), ...inIds(secondary.revealed)])),
+      redeemed: Array.from(new Set([...inIds(primary.redeemed), ...inIds(secondary.redeemed)]))
+    };
   }
 
   function initializeApp() {
@@ -742,6 +771,7 @@ const ALBUM_DATA = {
       document.querySelector('#wheel-status').textContent = DATES_DATA.wheelPrompt;
       document.querySelector('#coupon-heading').textContent = DATES_DATA.couponHeading;
       document.querySelector('#coupon-subheading').textContent = DATES_DATA.couponSubheading;
+      document.querySelector('#countdown-heading').innerHTML = COUNTDOWN_DATA.sectionTitle;
       document.querySelector('#spin-button').innerHTML = `<i data-lucide="rotate-cw" aria-hidden="true"></i> ${escapeHtml(DATES_DATA.spinButtonLabel)}`;
       document.querySelector('#date-modal-eyebrow').textContent = DATES_DATA.dateModalEyebrow;
       document.querySelector('#date-result-copy').textContent = DATES_DATA.dateModalCopy;
@@ -1095,6 +1125,106 @@ const ALBUM_DATA = {
       if (window.lucide) window.lucide.createIcons();
     }
 
+    function nextCountdownTarget(event, reference = new Date()) {
+      const makeDate = (year) => new Date(year, event.month - 1, event.day, event.hour || 0, event.minute || 0, 0, 0);
+      let target = makeDate(reference.getFullYear());
+      if (target <= reference) target = makeDate(reference.getFullYear() + 1);
+      return target;
+    }
+
+    function countdownMarkup(event) {
+      const target = nextCountdownTarget(event);
+      const dateLabel = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }).format(target);
+      return `<article class="countdown-card" data-countdown-card="${escapeHtml(event.id)}" data-countdown-target="${target.getTime()}">
+        <div class="countdown-card-heading"><span class="countdown-icon"><i data-lucide="${escapeHtml(event.icon)}" aria-hidden="true"></i></span><h3>${escapeHtml(event.title)}</h3></div>
+        <p class="countdown-date" data-countdown-date>${dateLabel}</p>
+        <div class="countdown-clock" role="timer" aria-label="Countdown bis ${escapeHtml(event.title)}">
+          <div class="countdown-unit"><strong data-countdown-unit="days">0</strong><span>Tage</span></div>
+          <div class="countdown-unit"><strong data-countdown-unit="hours">00</strong><span>Std.</span></div>
+          <div class="countdown-unit"><strong data-countdown-unit="minutes">00</strong><span>Min.</span></div>
+          <div class="countdown-unit"><strong data-countdown-unit="seconds">00</strong><span>Sek.</span></div>
+        </div><p class="countdown-note">${escapeHtml(event.note)}</p>
+      </article>`;
+    }
+
+    function updateRelationshipCountdowns() {
+      const grid = document.querySelector('#relationship-countdown-grid');
+      if (!grid) return;
+      const now = new Date();
+      grid.querySelectorAll('[data-countdown-card]').forEach((card) => {
+        const event = COUNTDOWN_DATA.events.find((item) => item.id === card.dataset.countdownCard);
+        if (!event) return;
+        let target = Number(card.dataset.countdownTarget);
+        if (!Number.isFinite(target) || target <= now.getTime()) {
+          const nextTarget = nextCountdownTarget(event, now);
+          target = nextTarget.getTime();
+          card.dataset.countdownTarget = String(target);
+          const date = card.querySelector('[data-countdown-date]');
+          if (date) date.textContent = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }).format(nextTarget);
+        }
+        const totalSeconds = Math.max(0, Math.floor((target - now.getTime()) / 1000));
+        const values = {
+          days: Math.floor(totalSeconds / 86400),
+          hours: Math.floor((totalSeconds % 86400) / 3600),
+          minutes: Math.floor((totalSeconds % 3600) / 60),
+          seconds: totalSeconds % 60
+        };
+        Object.entries(values).forEach(([unit, value]) => {
+          const element = card.querySelector(`[data-countdown-unit="${unit}"]`);
+          if (element) element.textContent = unit === 'days' ? String(value) : String(value).padStart(2, '0');
+        });
+      });
+    }
+
+    function renderRelationshipCountdowns() {
+      const grid = document.querySelector('#relationship-countdown-grid');
+      if (!grid) return;
+      grid.innerHTML = COUNTDOWN_DATA.events.map(countdownMarkup).join('');
+      if (window.lucide) window.lucide.createIcons();
+      updateRelationshipCountdowns();
+    }
+
+    async function renderRelationshipTimeline() {
+      const list = document.querySelector('#relationship-timeline-list');
+      if (!list) return;
+      try {
+        const albumPhotos = await getAlbumPhotos();
+        const dateEntries = albumPhotos
+          .filter((photo) => photo.mediaType !== 'video' && photo.dateObject && Number.isFinite(photo.dateObject.getTime()))
+          .sort((a, b) => a.dateObject - b.dateObject);
+        const groups = new Map();
+        dateEntries.forEach((photo) => {
+          const key = `${photo.dateObject.getFullYear()}-${String(photo.dateObject.getMonth() + 1).padStart(2, '0')}`;
+          if (!groups.has(key)) groups.set(key, { date: new Date(photo.dateObject.getFullYear(), photo.dateObject.getMonth(), 1), photos: [] });
+          groups.get(key).photos.push(photo);
+        });
+
+        const startEntry = `<article class="timeline-entry timeline-start-entry"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(COUNTDOWN_DATA.relationshipStartTitle)}</h3><span class="timeline-entry-count">Der Anfang</span></div><p class="timeline-entry-note">${escapeHtml(COUNTDOWN_DATA.relationshipStartNote)}</p><span class="timeline-start-icon"><i data-lucide="heart" aria-hidden="true"></i></span></div></article>`;
+        const groupEntries = Array.from(groups.values()).sort((a, b) => a.date - b.date).map((group, groupIndex) => {
+          const photos = group.photos;
+          const dateLabel = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(group.date);
+          const photoButtons = photos.slice(0, 3).map((photo, index) => {
+            const alt = photo.caption || photo.alt || 'Gemeinsame Erinnerung';
+            const extra = index === 2 && photos.length > 3 ? `<span class="timeline-photo-more">+${photos.length - 2}</span>` : '';
+            return `<button class="timeline-photo" type="button" data-timeline-photo="${escapeHtml(photo.key)}" aria-label="Erinnerungsfoto vom ${escapeHtml(albumDateLabel(photo.dateObject))} öffnen"><img src="${escapeHtml(photo.src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">${extra}</button>`;
+          }).join('');
+          const location = photos.find((photo) => photo.location?.name || photo.locationName)?.location?.name || photos.find((photo) => photo.locationName)?.locationName;
+          const note = location ? `${photos.length} datierte Erinnerungen · ${location}` : `${photos.length} datierte ${photos.length === 1 ? 'Erinnerung' : 'Erinnerungen'} im Album`;
+          return `<article class="timeline-entry" style="animation-delay:${Math.min(groupIndex, 10) * 35}ms"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(dateLabel)}</h3><span class="timeline-entry-count">${photos.length} ${photos.length === 1 ? 'Foto' : 'Fotos'}</span></div><p class="timeline-entry-note">${escapeHtml(note)}</p><div class="timeline-photo-row">${photoButtons}</div></div></article>`;
+        });
+        list.innerHTML = startEntry + (groupEntries.length ? groupEntries.join('') : '<p class="timeline-empty">Sobald eure Bilder ein Datum haben, erscheinen sie hier automatisch – Monat für Monat, direkt aus dem Album.</p>');
+        list.querySelectorAll('[data-timeline-photo]').forEach((button) => button.addEventListener('click', () => {
+          const photo = albumPhotos.find((entry) => entry.key === button.dataset.timelinePhoto);
+          if (photo) openAlbumPhoto(photo);
+        }));
+        list.querySelectorAll('.timeline-photo img').forEach((image) => image.addEventListener('error', () => { image.closest('.timeline-photo')?.remove(); }, { once: true }));
+        if (window.lucide) window.lucide.createIcons();
+      } catch (_) {
+        list.innerHTML = `<article class="timeline-entry timeline-start-entry"><div class="timeline-entry-card"><div class="timeline-entry-heading"><h3>${escapeHtml(COUNTDOWN_DATA.relationshipStartTitle)}</h3><span class="timeline-entry-count">Der Anfang</span></div><p class="timeline-entry-note">${escapeHtml(COUNTDOWN_DATA.relationshipStartNote)}</p><span class="timeline-start-icon"><i data-lucide="heart" aria-hidden="true"></i></span></div></article><p class="timeline-empty">Eure weiteren Kapitel erscheinen hier, sobald Albumdaten verfügbar sind.</p>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+
     function revealCoupon(id, canvas) {
       const card = Array.from(document.querySelectorAll('[data-coupon-card]')).find((item) => item.dataset.couponCard === id);
       if (!card || card.classList.contains('is-revealed')) return;
@@ -1378,6 +1508,8 @@ const ALBUM_DATA = {
         mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
         bucketItems: readBucketItems(),
         bucketDeletedIds: readBucketDeletedIds(),
+        unlockedLetters: readUnlockedLetters(),
+        dailyCouponState: readRecord(DATES_DATA.dailyStateStorageKey),
         uploadedPhotos: albumRemoteState?.uploadedPhotos || []
       };
     }
@@ -1392,6 +1524,8 @@ const ALBUM_DATA = {
       const sharedBucketItems = mergeBucketItems(readBucketItems(), Array.isArray(state.bucketItems) ? state.bucketItems : []).filter((item) => !sharedBucketDeletedIds.has(item.id));
       localStorage.setItem(BUCKET_LIST_DELETED_KEY, JSON.stringify(Array.from(sharedBucketDeletedIds)));
       localStorage.setItem(BUCKET_LIST_STORAGE_KEY, JSON.stringify(sharedBucketItems));
+      localStorage.setItem(TREASURE_DATA.unlockedStorageKey, JSON.stringify(Array.from(new Set([...readUnlockedLetters(), ...(Array.isArray(state.unlockedLetters) ? state.unlockedLetters : [])]))));
+      localStorage.setItem(DATES_DATA.dailyStateStorageKey, JSON.stringify(mergeDailyCouponState(state.dailyCouponState, readRecord(DATES_DATA.dailyStateStorageKey))));
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
@@ -1408,6 +1542,8 @@ const ALBUM_DATA = {
       const sharedBucketItems = mergeBucketItems(Array.isArray(state.bucketItems) ? state.bucketItems : [], readBucketItems()).filter((item) => !sharedBucketDeletedIds.has(item.id));
       localStorage.setItem(BUCKET_LIST_DELETED_KEY, JSON.stringify(Array.from(sharedBucketDeletedIds)));
       localStorage.setItem(BUCKET_LIST_STORAGE_KEY, JSON.stringify(sharedBucketItems));
+      localStorage.setItem(TREASURE_DATA.unlockedStorageKey, JSON.stringify(Array.from(new Set([...readUnlockedLetters(), ...(Array.isArray(state.unlockedLetters) ? state.unlockedLetters : [])]))));
+      localStorage.setItem(DATES_DATA.dailyStateStorageKey, JSON.stringify(mergeDailyCouponState(state.dailyCouponState, readRecord(DATES_DATA.dailyStateStorageKey))));
       const localTombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
       for (const id of state.deletedUploadedPhotoIds || []) localTombstones[id] = true;
       localStorage.setItem(ALBUM_DATA.deletedUploadedPhotosStorageKey, JSON.stringify(localTombstones));
@@ -1422,7 +1558,7 @@ const ALBUM_DATA = {
         const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
         if (!response.ok) return null;
         const state = await response.json();
-        if (!state || state.schemaVersion !== 1) return null;
+        if (!state || ![1, 2].includes(state.schemaVersion)) return null;
         albumPublishedState = {
           dateOverrides: state.dateOverrides || {},
           deletedPhotos: state.deletedPhotos || {},
@@ -1432,6 +1568,8 @@ const ALBUM_DATA = {
           mapHiddenPhotoKeys: state.mapHiddenPhotoKeys || {},
           bucketItems: Array.isArray(state.bucketItems) ? state.bucketItems : [],
           bucketDeletedIds: Array.isArray(state.bucketDeletedIds) ? state.bucketDeletedIds : [],
+          unlockedLetters: Array.isArray(state.unlockedLetters) ? state.unlockedLetters : [],
+          dailyCouponState: state.dailyCouponState || null,
           uploadedPhotos: Array.isArray(state.uploadedPhotos) ? state.uploadedPhotos : []
         };
         applyPublishedAlbumState(albumPublishedState);
@@ -1460,7 +1598,7 @@ const ALBUM_DATA = {
       setAlbumSyncStatus('Änderungen werden mit euren Geräten synchronisiert …', 'saving');
       window.clearTimeout(albumCloudSaveTimer);
       albumCloudSaveTimer = window.setTimeout(() => {
-        albumCloudSaveQueue = albumCloudSaveQueue
+          albumCloudSaveQueue = albumCloudSaveQueue.catch(() => {})
           .then(() => saveSharedAlbumStateNow())
           .then(() => {
             albumCloudLastError = '';
@@ -1505,7 +1643,7 @@ const ALBUM_DATA = {
         if (albumCloudSaveTimer) {
           window.clearTimeout(albumCloudSaveTimer);
           albumCloudSaveTimer = 0;
-          await saveSharedAlbumStateNow().catch(() => {});
+          albumCloudSaveQueue = albumCloudSaveQueue.catch(() => {}).then(() => saveSharedAlbumStateNow());
         }
         await albumCloudSaveQueue.catch(() => {});
       }
@@ -2518,56 +2656,69 @@ const ALBUM_DATA = {
       });
     }
 
+    async function collectPortableUploadedPhotos() {
+      await refreshSharedAlbumState(true).catch(() => false);
+      await loadPublishedAlbumState();
+      const localPhotos = await readUploadedPhotos().catch(() => []);
+      const localById = new Map(localPhotos.map((photo) => [photo.id, photo]));
+      const combined = new Map();
+      for (const photo of albumPublishedState?.uploadedPhotos || []) combined.set(photo.id, photo);
+      for (const photo of albumRemoteState?.uploadedPhotos || []) combined.set(photo.id, { ...photo, blob: localById.get(photo.id)?.blob || photo.blob, remote: true });
+      for (const photo of localPhotos) combined.set(photo.id, photo);
+
+      const tombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
+      const uploadedPhotos = [];
+      for (const photo of combined.values()) {
+        if (tombstones[photo.id]) continue;
+        let dataUrl = photo.dataUrl || '';
+        if (photo.blob) dataUrl = await blobToWebsiteDataUrl(photo.blob);
+        else if (!dataUrl && photo.remote) {
+          const response = await fetch('/api/album/photos/' + encodeURIComponent(photo.id), { credentials: 'same-origin', cache: 'no-store' });
+          if (!response.ok) throw new Error('Ein synchronisiertes Foto ließ sich nicht lesen. Öffne den Export auf einem Gerät, auf dem es verfügbar ist.');
+          dataUrl = await blobToWebsiteDataUrl(await response.blob());
+        }
+        if (!dataUrl) continue;
+        uploadedPhotos.push({
+          id: photo.id,
+          fileName: photo.fileName || 'erinnerungsfoto.jpg',
+          caption: photo.caption || 'Ein Moment für uns',
+          capturedAt: photo.capturedAt || '',
+          locationName: photo.locationName || '',
+          latitude: photo.latitude !== null && photo.latitude !== '' && Number.isFinite(Number(photo.latitude)) ? Number(photo.latitude) : null,
+          longitude: photo.longitude !== null && photo.longitude !== '' && Number.isFinite(Number(photo.longitude)) ? Number(photo.longitude) : null,
+          addedAt: photo.addedAt || '',
+          dataUrl
+        });
+      }
+      return { uploadedPhotos, tombstones };
+    }
+
+    function currentPortableState(uploadedPhotos, tombstones) {
+      return {
+        dateOverrides: readRecord(ALBUM_DATA.dateOverridesStorageKey),
+        deletedPhotos: readRecord(ALBUM_DATA.deletedPhotosStorageKey),
+        deletedUploadedPhotoIds: Object.keys(tombstones).filter((id) => tombstones[id]),
+        locationOverrides: readRecord('fuer-dich-album-location-overrides'),
+        mapHiddenPlaces: readRecord(MAP_HIDDEN_PLACES_KEY),
+        mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
+        bucketItems: readBucketItems(),
+        bucketDeletedIds: readBucketDeletedIds(),
+        unlockedLetters: readUnlockedLetters(),
+        dailyCouponState: readRecord(DATES_DATA.dailyStateStorageKey),
+        uploadedPhotos
+      };
+    }
+
     async function exportAlbumForWebsite(button) {
       const status = document.querySelector('#album-upload-status');
       button.disabled = true;
       status.textContent = 'Albumänderungen werden für die Website vorbereitet …';
       try {
-        await loadPublishedAlbumState();
-        const localPhotos = await readUploadedPhotos().catch(() => []);
-        const localById = new Map(localPhotos.map((photo) => [photo.id, photo]));
-        const combined = new Map();
-        for (const photo of albumPublishedState?.uploadedPhotos || []) combined.set(photo.id, photo);
-        for (const photo of albumRemoteState?.uploadedPhotos || []) combined.set(photo.id, { ...photo, blob: localById.get(photo.id)?.blob || photo.blob, remote: true });
-        for (const photo of localPhotos) combined.set(photo.id, photo);
-
-        const tombstones = readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey);
-        const uploadedPhotos = [];
-        for (const photo of combined.values()) {
-          if (tombstones[photo.id]) continue;
-          let dataUrl = photo.dataUrl || '';
-          if (photo.blob) dataUrl = await blobToWebsiteDataUrl(photo.blob);
-          else if (!dataUrl && photo.remote) {
-            const response = await fetch('/api/album/photos/' + encodeURIComponent(photo.id), { credentials: 'same-origin', cache: 'no-store' });
-            if (!response.ok) throw new Error('Ein bereits synchronisiertes Foto ließ sich nicht exportieren. Öffne den Export auf einem Gerät, auf dem das Foto gespeichert ist.');
-            dataUrl = await blobToWebsiteDataUrl(await response.blob());
-          }
-          if (!dataUrl) continue;
-          uploadedPhotos.push({
-            id: photo.id,
-            fileName: photo.fileName || 'erinnerungsfoto.jpg',
-            caption: photo.caption || 'Ein Moment für uns',
-            capturedAt: photo.capturedAt || '',
-            locationName: photo.locationName || '',
-            latitude: photo.latitude !== null && photo.latitude !== '' && Number.isFinite(Number(photo.latitude)) ? Number(photo.latitude) : null,
-            longitude: photo.longitude !== null && photo.longitude !== '' && Number.isFinite(Number(photo.longitude)) ? Number(photo.longitude) : null,
-            addedAt: photo.addedAt || '',
-            dataUrl
-          });
-        }
-
+        const { uploadedPhotos, tombstones } = await collectPortableUploadedPhotos();
         const exportData = {
-          schemaVersion: 1,
+          schemaVersion: 2,
           updatedAt: new Date().toISOString(),
-          dateOverrides: readRecord(ALBUM_DATA.dateOverridesStorageKey),
-          deletedPhotos: readRecord(ALBUM_DATA.deletedPhotosStorageKey),
-          deletedUploadedPhotoIds: Object.keys(tombstones).filter((id) => tombstones[id]),
-          locationOverrides: readRecord('fuer-dich-album-location-overrides'),
-          mapHiddenPlaces: readRecord(MAP_HIDDEN_PLACES_KEY),
-          mapHiddenPhotoKeys: readRecord(MAP_HIDDEN_PHOTOS_KEY),
-          bucketItems: readBucketItems(),
-          bucketDeletedIds: readBucketDeletedIds(),
-          uploadedPhotos
+          ...currentPortableState(uploadedPhotos, tombstones)
         };
         const json = JSON.stringify(exportData, null, 2);
         const sizeLimit = 24 * 1024 * 1024;
@@ -2578,8 +2729,8 @@ const ALBUM_DATA = {
         link.download = 'album-published.json';
         link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-        status.textContent = `Datei erstellt: ${uploadedPhotos.length} neue Fotos und deine Albumänderungen. Lade „album-published.json“ in GitHub hoch.`;
-        setAlbumSyncStatus('Website-Datei heruntergeladen. Nach dem GitHub-Upload erscheint sie auf allen Geräten.', 'ready');
+        status.textContent = `Datei erstellt: ${uploadedPhotos.length} Fotos sowie Album-, Tresor-, Gutschein- und Wunschlistenstand. Lade „album-published.json“ in GitHub hoch.`;
+        setAlbumSyncStatus('Website-Datei erstellt. Nach dem GitHub-Upload erscheinen die Änderungen auf allen Geräten.', 'ready');
       } catch (error) {
         status.textContent = error.message || 'Die Website-Datei konnte nicht erstellt werden.';
       } finally {
@@ -2588,6 +2739,112 @@ const ALBUM_DATA = {
     }
 
     document.querySelector('#album-export-website')?.addEventListener('click', (event) => exportAlbumForWebsite(event.currentTarget));
+
+    async function exportDeviceBackup(button) {
+      const backupStatus = document.querySelector('#album-backup-status');
+      button.disabled = true;
+      backupStatus.textContent = 'Sicherung mit den vorhandenen Fotos wird erstellt …';
+      try {
+        const { uploadedPhotos, tombstones } = await collectPortableUploadedPhotos();
+        const backup = {
+          format: 'fuer-dich-device-backup',
+          schemaVersion: 1,
+          createdAt: new Date().toISOString(),
+          appState: currentPortableState(uploadedPhotos, tombstones)
+        };
+        const json = JSON.stringify(backup, null, 2);
+        const size = new Blob([json]).size;
+        if (size > 24 * 1024 * 1024) throw new Error('Die Sicherung ist größer als 24 MB. Für eine kleinere Datei exportiere sie auf einem Gerät, auf dem die Fotos bereits veröffentlicht sind.');
+        const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'fuer-dich-sicherung.json';
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+        backupStatus.textContent = `Sicherung bereit: ${uploadedPhotos.length} eigene Fotos und eure App-Daten. Die Datei kannst du auf einem anderen Gerät hier übernehmen.`;
+      } catch (error) {
+        backupStatus.textContent = error.message || 'Die Sicherung konnte nicht erstellt werden.';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function importDeviceBackup(file) {
+      const backupStatus = document.querySelector('#album-backup-status');
+      if (!file) return;
+      backupStatus.textContent = 'Sicherung wird eingelesen und mit diesem Gerät zusammengeführt …';
+      try {
+        if (file.size > 24 * 1024 * 1024) throw new Error('Die Sicherungsdatei ist größer als 24 MB.');
+        const backup = JSON.parse(await file.text());
+        const incoming = backup?.appState;
+        if (backup?.format !== 'fuer-dich-device-backup' || backup.schemaVersion !== 1 || !incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+          throw new Error('Diese Datei ist keine gültige „Für Dich“-Sicherung.');
+        }
+
+        const mergeRecord = (key, value) => {
+          const clean = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+          if (!writeRecord(key, { ...readRecord(key), ...clean })) throw new Error('App-Daten konnten nicht dauerhaft gespeichert werden.');
+        };
+        mergeRecord(ALBUM_DATA.dateOverridesStorageKey, incoming.dateOverrides);
+        mergeRecord(ALBUM_DATA.deletedPhotosStorageKey, incoming.deletedPhotos);
+        mergeRecord('fuer-dich-album-location-overrides', incoming.locationOverrides);
+        mergeRecord(MAP_HIDDEN_PLACES_KEY, incoming.mapHiddenPlaces);
+        mergeRecord(MAP_HIDDEN_PHOTOS_KEY, incoming.mapHiddenPhotoKeys);
+
+        const deletedUploadIds = new Set([
+          ...Object.keys(readRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey)),
+          ...(Array.isArray(incoming.deletedUploadedPhotoIds) ? incoming.deletedUploadedPhotoIds.filter((id) => typeof id === 'string') : [])
+        ]);
+        const tombstones = Object.fromEntries(Array.from(deletedUploadIds, (id) => [id, true]));
+        if (!writeRecord(ALBUM_DATA.deletedUploadedPhotosStorageKey, tombstones)) throw new Error('Fotolöschungen konnten nicht gespeichert werden.');
+
+        const deletedBucketIds = new Set([...readBucketDeletedIds(), ...(Array.isArray(incoming.bucketDeletedIds) ? incoming.bucketDeletedIds.filter((id) => typeof id === 'string') : [])]);
+        const bucketItems = mergeBucketItems(readBucketItems(), incoming.bucketItems).filter((item) => !deletedBucketIds.has(item.id));
+        if (!writeRecord(BUCKET_LIST_DELETED_KEY, Array.from(deletedBucketIds)) || !writeRecord(BUCKET_LIST_STORAGE_KEY, bucketItems)) throw new Error('Die Wunschliste konnte nicht gespeichert werden.');
+
+        const unlocked = new Set([...readUnlockedLetters(), ...(Array.isArray(incoming.unlockedLetters) ? incoming.unlockedLetters.filter((id) => typeof id === 'string') : [])]);
+        if (!saveUnlockedLetters(Array.from(unlocked))) throw new Error('Die Tresor-Briefe konnten nicht gespeichert werden.');
+        if (!writeRecord(DATES_DATA.dailyStateStorageKey, mergeDailyCouponState(incoming.dailyCouponState, readRecord(DATES_DATA.dailyStateStorageKey)))) throw new Error('Der Gutscheinstand konnte nicht gespeichert werden.');
+
+        let restoredPhotoCount = 0;
+        for (const photo of Array.isArray(incoming.uploadedPhotos) ? incoming.uploadedPhotos : []) {
+          if (!photo || typeof photo.id !== 'string' || !/^[\w-]{1,100}$/.test(photo.id) || typeof photo.dataUrl !== 'string' || !/^data:(image|video)\//i.test(photo.dataUrl)) continue;
+          if (tombstones[photo.id]) continue;
+          const blob = await fetch(photo.dataUrl).then((response) => response.blob());
+          await saveUploadedPhoto({
+            id: photo.id,
+            blob,
+            fileName: photo.fileName || 'erinnerungsfoto.jpg',
+            caption: photo.caption || 'Ein Moment für uns',
+            capturedAt: photo.capturedAt || '',
+            locationName: photo.locationName || '',
+            latitude: photo.latitude ?? null,
+            longitude: photo.longitude ?? null,
+            addedAt: photo.addedAt || ''
+          });
+          restoredPhotoCount += 1;
+        }
+
+        dailyCouponMemoryState = null;
+        renderedCouponDay = '';
+        renderCoupons();
+        renderBucketList();
+        renderTreasureCards();
+        albumPageIndex = Number.MAX_SAFE_INTEGER;
+        await renderAlbumPage();
+        await refreshUploadedMapPhotos();
+        if (albumCloudReady) await refreshSharedAlbumState(true);
+        backupStatus.textContent = `Übernommen: ${restoredPhotoCount} eigene Fotos, Albumdaten, Orte, Wunschliste, geöffnete Briefe und Gutscheine. Für alle Geräte: Website-Datei erstellen und in GitHub veröffentlichen.`;
+      } catch (error) {
+        backupStatus.textContent = error.message || 'Diese Sicherung konnte nicht übernommen werden.';
+      }
+    }
+
+    document.querySelector('#album-backup-export')?.addEventListener('click', (event) => exportDeviceBackup(event.currentTarget));
+    document.querySelector('#album-backup-input')?.addEventListener('change', (event) => {
+      importDeviceBackup(event.currentTarget.files?.[0]);
+      event.currentTarget.value = '';
+    });
 
     // Open-When vault: restore its cards, date countdowns and password letters.
     const treasureGrid = document.querySelector('#treasure-grid');
@@ -2609,6 +2866,7 @@ const ALBUM_DATA = {
     function saveUnlockedLetters(ids) {
       try {
         localStorage.setItem(TREASURE_DATA.unlockedStorageKey, JSON.stringify(Array.from(new Set(ids))));
+        window.__fuerDichSyncAlbumState?.();
         return true;
       } catch (_) { return false; }
     }
@@ -2753,6 +3011,7 @@ const ALBUM_DATA = {
     document.querySelector('#treasure-modal')?.addEventListener('close', () => { activeTreasureLetter = null; });
     renderTreasureCards();
     window.setInterval(updateTreasureCountdowns, 1000);
+    window.setInterval(updateRelationshipCountdowns, 1000);
 
     // Leaflet satellite map with a searchable, manageable place directory.
     function renderMapPlaceDirectory() {
@@ -3133,11 +3392,24 @@ const ALBUM_DATA = {
       if (event.detail.tab === 'dates') {
         drawWheel();
         if (getDailyCouponState().day !== renderedCouponDay) renderCoupons();
+        updateRelationshipCountdowns();
+        renderRelationshipTimeline();
+        refreshSharedAlbumState(true).then(() => {
+          dailyCouponMemoryState = null;
+          renderedCouponDay = '';
+          renderCoupons();
+          updateRelationshipCountdowns();
+        });
       }
       if (event.detail.tab === 'karte') initializeMap();
       if (event.detail.tab === 'bucketlist') renderBucketList();
+      if (event.detail.tab === 'tresor') refreshSharedAlbumState(true).then(() => renderTreasureCards());
+      if (event.detail.tab === 'bucketlist') refreshSharedAlbumState(true).then(() => renderBucketList());
       if (event.detail.tab === 'album') {
-        refreshSharedAlbumState(true).then(() => renderAlbumPage());
+        refreshSharedAlbumState(true).then(async () => {
+          await renderAlbumPage();
+          await renderRelationshipTimeline();
+        });
       }
       if (event.detail.tab === 'dates') document.querySelectorAll('.scratch-canvas:not([hidden])').forEach(setupScratchCanvas);
     });
@@ -3149,10 +3421,18 @@ const ALBUM_DATA = {
     });
 
     window.setInterval(async () => {
-      if (document.hidden || !document.querySelector('#album')?.classList.contains('is-active') || !albumCloudReady) return;
+      if (document.hidden || !albumCloudReady) return;
       const previousUpdate = albumRemoteState?.updatedAt;
       if (await refreshSharedAlbumState(true) && albumRemoteState?.updatedAt !== previousUpdate) {
-        await renderAlbumPage();
+        if (document.querySelector('#album')?.classList.contains('is-active')) await renderAlbumPage();
+        if (document.querySelector('#dates')?.classList.contains('is-active')) {
+          dailyCouponMemoryState = null;
+          renderedCouponDay = '';
+          renderCoupons();
+          await renderRelationshipTimeline();
+        }
+        if (document.querySelector('#tresor')?.classList.contains('is-active')) renderTreasureCards();
+        if (document.querySelector('#bucketlist')?.classList.contains('is-active')) renderBucketList();
         if (activeTab === 'karte') await refreshUploadedMapPhotos();
       }
     }, 30000);
@@ -3165,6 +3445,8 @@ const ALBUM_DATA = {
 
     applyConfiguredCopy();
     if (window.lucide) window.lucide.createIcons();
+    renderRelationshipCountdowns();
+    renderRelationshipTimeline();
     const firstTarget = navButtons[0]?.dataset.target || tabSections[0]?.id;
     if (firstTarget) showTab(firstTarget);
     initWrapped();

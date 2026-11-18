@@ -778,3 +778,61 @@ button:focus-visible, a[href]:focus-visible { outline-color: #f2c1c7; }
 @media (prefers-reduced-motion: no-preference) {
   .glass-card, .album-week-header, .map-place-directory, .bucket-list-item { transition-timing-function: var(--ease-clean); }
 }
+
+/* Shared dates, personal timeline, and portable device backups. */
+.relationship-countdowns, .relationship-timeline { margin-top: 1.7rem; }
+.relationship-section-heading { margin-bottom: .85rem; }
+.relationship-section-heading h2 { margin: .55rem 0 .3rem; color: var(--cream); font-size: 1.52rem; line-height: 1.2; }
+.relationship-section-heading h2 em { color: var(--blush); font-weight: 500; }
+.relationship-section-heading p { max-width: 26rem; margin: .3rem 0 0; color: #c9babc; font-size: .76rem; line-height: 1.55; }
+.relationship-countdown-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .65rem; }
+.countdown-card { position: relative; overflow: hidden; padding: .9rem; border: 1px solid rgba(246,228,220,.12); border-radius: 1.05rem; background: linear-gradient(145deg, rgba(49,33,39,.88), rgba(30,22,27,.92)); box-shadow: 0 10px 27px rgba(8,5,7,.15), inset 0 1px rgba(255,248,242,.04); }
+.countdown-card::after { position: absolute; top: -3rem; right: -2rem; width: 7rem; height: 7rem; border-radius: 50%; background: rgba(216,92,114,.08); content: ''; filter: blur(18px); pointer-events: none; }
+.countdown-card-heading { position: relative; display: flex; align-items: center; gap: .55rem; }
+.countdown-icon { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid rgba(241,181,189,.18); border-radius: .7rem; color: var(--blush); background: rgba(216,92,114,.1); }
+.countdown-icon svg { width: 1rem; height: 1rem; }
+.countdown-card h3 { margin: 0; color: var(--cream); font-family: 'Playfair Display', serif; font-size: .95rem; font-weight: 500; }
+.countdown-date { margin: .55rem 0 .6rem; color: #d0bfc0; font-size: .62rem; }
+.countdown-clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .32rem; }
+.countdown-unit { min-width: 0; padding: .42rem .12rem .38rem; border: 1px solid rgba(246,228,220,.08); border-radius: .58rem; background: rgba(255,248,242,.035); text-align: center; }
+.countdown-unit strong { display: block; color: #fff0f2; font-size: .92rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.countdown-unit span { display: block; margin-top: .2rem; color: #ac999e; font-size: .48rem; letter-spacing: .05em; text-transform: uppercase; }
+.countdown-note { margin: .55rem 0 0; color: #a9989d; font-size: .59rem; line-height: 1.4; }
+.relationship-timeline-list { position: relative; display: grid; gap: .7rem; padding-left: 1rem; }
+.relationship-timeline-list::before { position: absolute; top: .75rem; bottom: .75rem; left: .29rem; width: 1px; background: linear-gradient(var(--blush), rgba(241,181,189,.12)); content: ''; }
+.timeline-entry { position: relative; min-width: 0; animation: photo-reveal .42s var(--ease-clean) both; }
+.timeline-entry::before { position: absolute; z-index: 1; top: 1.05rem; left: -1.02rem; width: .55rem; height: .55rem; border: 2px solid #3a252c; border-radius: 50%; background: var(--blush); box-shadow: 0 0 0 3px rgba(241,181,189,.1); content: ''; }
+.timeline-entry-card { padding: .8rem; border: 1px solid rgba(246,228,220,.11); border-radius: 1rem; background: linear-gradient(145deg, rgba(49,34,39,.86), rgba(28,22,26,.92)); box-shadow: 0 9px 23px rgba(8,5,7,.13); }
+.timeline-entry-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.timeline-entry-heading h3 { margin: 0; color: var(--cream); font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 500; }
+.timeline-entry-count { flex: 0 0 auto; padding: .25rem .45rem; border: 1px solid rgba(215,187,145,.2); border-radius: 99px; color: #ead5b9; background: rgba(215,187,145,.07); font-size: .52rem; }
+.timeline-entry-note { margin: .35rem 0 .65rem; color: #c5b3b7; font-size: .65rem; line-height: 1.45; }
+.timeline-photo-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }
+.timeline-photo { position: relative; display: block; aspect-ratio: 1.08; overflow: hidden; padding: 0; border: 1px solid rgba(246,228,220,.12); border-radius: .62rem; background: #251b20; cursor: pointer; }
+.timeline-photo img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .38s var(--ease-clean), filter .38s ease; }
+.timeline-photo:active img { transform: scale(1.04); }
+.timeline-photo-more { position: absolute; inset: 0; display: grid; place-items: center; color: white; background: rgba(23,17,20,.56); font-size: .75rem; font-weight: 600; }
+.timeline-start-icon { display: grid; width: 2.4rem; height: 2.4rem; margin-top: .4rem; place-items: center; border: 1px solid rgba(241,181,189,.2); border-radius: .85rem; color: var(--blush); background: rgba(216,92,114,.1); }
+.timeline-start-icon svg { width: 1.15rem; height: 1.15rem; }
+.timeline-empty { margin: 0; padding: .8rem; border: 1px dashed rgba(241,181,189,.18); border-radius: .85rem; color: #c8b7ba; font-size: .72rem; line-height: 1.5; }
+.album-device-backup { margin-top: .7rem; padding: .8rem; border: 1px solid rgba(246,228,220,.1); border-radius: .9rem; background: rgba(255,248,242,.025); }
+.album-device-backup h3 { margin: .55rem 0 .3rem; color: var(--cream); font-size: 1.05rem; font-weight: 500; }
+.album-device-backup > p { margin: 0; color: #c1b1b4; font-size: .62rem; line-height: 1.5; }
+.album-device-backup-actions { display: grid; gap: .45rem; margin-top: .65rem; }
+.album-backup-import { display: flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: .45rem; padding: .45rem .7rem; border: 1px solid rgba(241,181,189,.2); border-radius: .75rem; color: #f3dfe2; background: rgba(216,92,114,.08); font-size: .68rem; font-weight: 600; cursor: pointer; }
+.album-backup-import svg { width: .95rem; height: .95rem; color: var(--blush); }
+.album-backup-status { margin-top: .55rem !important; color: #d8c3c6 !important; }
+.relationship-countdowns, .relationship-timeline { animation: soft-rise .5s var(--ease-clean) both; }
+.relationship-timeline { animation-delay: .08s; }
+@media (min-width: 420px) {
+  .relationship-countdown-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .countdown-card:first-child { grid-column: 1 / -1; }
+  .album-device-backup-actions { grid-template-columns: 1fr 1fr; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .timeline-photo:hover img { transform: scale(1.045); filter: brightness(1.06); }
+  .album-backup-import:hover { border-color: rgba(241,181,189,.38); background: rgba(216,92,114,.13); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timeline-entry, .relationship-countdowns, .relationship-timeline { animation: none; }
+}

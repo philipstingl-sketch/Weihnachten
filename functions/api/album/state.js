@@ -38,6 +38,32 @@ export async function onRequestPut(context) {
   }
   state.bucketItems = Array.from(bucketItemsById.values()).filter((item) => !state.bucketDeletedIds.includes(item.id));
 
+  state.unlockedLetters = Array.from(new Set([
+    ...state.unlockedLetters,
+    ...(Array.isArray(incoming.unlockedLetters) ? incoming.unlockedLetters.filter((id) => typeof id === 'string' && id.length <= 120) : [])
+  ])).slice(-200);
+  if (incoming.dailyCouponState && typeof incoming.dailyCouponState.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(incoming.dailyCouponState.day)) {
+    const incomingCoupons = incoming.dailyCouponState;
+    const currentCoupons = state.dailyCouponState;
+    const cleanList = (value) => Array.isArray(value) ? Array.from(new Set(value.filter((id) => typeof id === 'string' && id.length <= 120))).slice(0, 100) : [];
+    if (!currentCoupons || incomingCoupons.day > currentCoupons.day) {
+      state.dailyCouponState = {
+        day: incomingCoupons.day,
+        ids: cleanList(incomingCoupons.ids),
+        revealed: cleanList(incomingCoupons.revealed),
+        redeemed: cleanList(incomingCoupons.redeemed)
+      };
+    } else if (incomingCoupons.day === currentCoupons.day) {
+      const ids = cleanList(currentCoupons.ids).length ? cleanList(currentCoupons.ids) : cleanList(incomingCoupons.ids);
+      state.dailyCouponState = {
+        day: currentCoupons.day,
+        ids,
+        revealed: Array.from(new Set([...cleanList(currentCoupons.revealed), ...cleanList(incomingCoupons.revealed)])).filter((id) => ids.includes(id)),
+        redeemed: Array.from(new Set([...cleanList(currentCoupons.redeemed), ...cleanList(incomingCoupons.redeemed)])).filter((id) => ids.includes(id))
+      };
+    }
+  }
+
   const deletedIds = new Set([
     ...state.deletedUploadedPhotoIds,
     ...(Array.isArray(incoming.deletedUploadedPhotoIds) ? incoming.deletedUploadedPhotoIds.filter((id) => typeof id === 'string') : [])

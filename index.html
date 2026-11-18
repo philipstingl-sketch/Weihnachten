@@ -26,13 +26,13 @@
       };
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./style.css?v=30" />
+    <link rel="stylesheet" href="./style.css?v=31" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js"></script>
-    <script defer src="./app.js?v=39"></script>
+    <script defer src="./app.js?v=40"></script>
   </head>
   <body class="min-h-screen bg-ink font-sans text-white antialiased">
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -68,6 +68,16 @@
           </article>
           <div class="coupon-heading"><span id="coupon-heading" class="pill"></span><h2 id="coupon-subheading" class="section-title font-display"></h2></div>
           <div id="coupon-grid" class="coupon-grid"></div>
+
+          <section class="relationship-countdowns" aria-labelledby="countdown-heading">
+            <div class="relationship-section-heading"><span class="pill">UNSERE NÄCHSTEN MOMENTE</span><h2 id="countdown-heading" class="font-display">Noch ein kleines Stück bis zu <em>unserem Moment.</em></h2></div>
+            <div id="relationship-countdown-grid" class="relationship-countdown-grid" aria-live="off"></div>
+          </section>
+
+          <section class="relationship-timeline" aria-labelledby="relationship-timeline-heading">
+            <div class="relationship-section-heading"><span class="pill">KAPITEL FÜR KAPITEL</span><h2 id="relationship-timeline-heading" class="font-display">Unsere <em>Geschichte.</em></h2><p>Ein kleiner Zeitstrahl aus dem Anfang und euren datierten Albumfotos.</p></div>
+            <div id="relationship-timeline-list" class="relationship-timeline-list" aria-live="polite"></div>
+          </section>
         </section>
 
         <section id="game" class="tab-panel tab-section" data-panel="game" aria-labelledby="game-title" hidden>
@@ -170,7 +180,18 @@
               </div>
               <div class="album-publish-box">
                 <button id="album-export-website" class="album-export-website" type="button"><i data-lucide="download" aria-hidden="true"></i><span>Änderungen für die Website herunterladen</span></button>
-                <p>Die Datei enthält Datums- und Ortsänderungen, Löschungen und neue Fotos. Lade sie danach in GitHub hoch; Cloudflare veröffentlicht das Album anschließend für alle Geräte.</p>
+                <p>Die Datei enthält eure Albumfotos, Datums- und Ortsänderungen, die Wunschliste, geöffnete Tresorbriefe und den heutigen Gutscheinstand. Lade sie danach in GitHub hoch; Cloudflare veröffentlicht den Stand für alle Geräte.</p>
+              </div>
+              <div class="album-device-backup">
+                <span class="pill">FÜR ALLE EURE GERÄTE</span>
+                <h3 class="font-display">Sicherung &amp; Übernahme</h3>
+                <p>Speichere eure Albumfotos und App-Erinnerungen in einer Datei. Auf einem anderen Gerät kannst du sie hier wieder einlesen. Für die Website veröffentlichst du anschließend wie oben beschrieben.</p>
+                <div class="album-device-backup-actions">
+                  <button id="album-backup-export" class="album-export-website" type="button"><i data-lucide="archive" aria-hidden="true"></i><span>Sicherung herunterladen</span></button>
+                  <label class="album-backup-import" for="album-backup-input"><i data-lucide="folder-up" aria-hidden="true"></i><span>Sicherung übernehmen</span></label>
+                  <input id="album-backup-input" class="sr-only" type="file" accept="application/json,.json" />
+                </div>
+                <p id="album-backup-status" class="album-backup-status" role="status" aria-live="polite">Die Sicherungsdatei bleibt auf deinem Gerät, bis du sie selbst weitergibst.</p>
               </div>
               <p id="album-upload-status" class="album-upload-status" role="status" aria-live="polite"></p>
             </section>
