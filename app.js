@@ -22,20 +22,20 @@ const WRAPPED_DATA = {
   ],
   placeHeading: 'Ein Ort, <em>zu dem wir zurückwollen.</em>',
   placeDescription: 'Manche Orte sind besonders, weil wir sie zusammen erlebt haben.',
-  placeName: 'Unser Sehnsuchtsort',
+  placeName: 'Grömitz',
   placeCaption: 'Hier wartet noch ein gemeinsames Abenteuer auf uns.',
   slides: [
     { type: 'counter', eyebrow: 'UNSER JAHR IN ZAHLEN', title: 'Seitdem ist jeder Tag <em>schöner.</em>', description: 'Seit unserem gemeinsamen Start sammeln wir kleine Momente, die sich ganz groß anfühlen.', caption: 'Und das ist erst der Anfang.' },
-    { type: 'first-photo', eyebrow: 'DER ANFANG VON UNS', title: 'Unser erstes Bild <em>zusammen.</em>', description: 'Ein Foto, ein Augenblick – und der Anfang von so vielen Erinnerungen.', photo: { path: 'assets/photos/first-photo.jpg', alt: 'Unser erstes gemeinsames Bild', label: 'Unser erstes Bild', caption: 'Der Anfang von uns' } },
+    { type: 'first-photo', eyebrow: 'DER ANFANG VON UNS', title: 'Unser erstes Bild <em>zusammen.</em>', description: 'Ein Foto, ein Augenblick – und der Anfang von so vielen Erinnerungen.', photo: { path: 'assets/photos/first-photo.jpg', albumPhotoKey: 'assets/photos/album/icloud-fotos-2/icloud2-35bd39b7-52ab-49fc-8467-ab17bed1d11c.jpg', alt: 'Unser erstes gemeinsames Bild', label: 'Unser erstes Bild', caption: 'Der Anfang von uns' } },
     { type: 'moments', eyebrow: 'UNSERE LIEBLINGSBILDER', title: 'Kleine Momente,<br /><em>ganz nah bei uns.</em>', description: 'Dreh die Fotos um und entdecke die Erinnerungen auf der Rückseite.', photos: [
       { path: 'assets/photos/my-favorite.jpg', alt: 'Dein Lieblingsbild von euch', label: 'Mein Lieblingsbild', caption: 'Ein Moment, den ich liebe' },
-      { path: 'assets/photos/your-favorite.jpg', alt: 'Ihr Lieblingsbild von euch', label: 'Dein Lieblingsbild', caption: 'Dein ganz besonderer Moment' },
-      { path: 'assets/photos/return-place.jpg', alt: 'Ein Ort, zu dem ihr zurückmöchtet', label: 'Hier möchten wir zurück', caption: 'Unser nächstes kleines Abenteuer' }
+      { path: 'assets/photos/your-favorite.jpg', albumPhotoKey: 'assets/photos/album/icloud-fotos-2/icloud2-64e22e5c-b1de-4a78-b959-09093de68245.jpg', alt: 'Ihr Lieblingsbild von euch', label: 'Dein Lieblingsbild', caption: 'Dein ganz besonderer Moment' },
+      { path: 'assets/photos/return-place.jpg', albumPhotoKey: 'assets/photos/album/iCloud Fotos/IMG_7085.PNG', alt: 'Ein Ort, zu dem ihr zurückmöchtet', label: 'Hier möchten wir zurück', caption: 'Unser nächstes kleines Abenteuer' }
     ] },
     { type: 'year', eyebrow: 'MONAT FÜR MONAT', title: 'Unser Jahr in <em>Bildern.</em>', description: 'Die Fotos aus eurem Album ordnen sich nach Monaten. Tippe einen Monat an, um die Bilder zu öffnen.' },
     { type: 'stats', eyebrow: 'WIR ZWEI, GANZ IN ZAHLEN', title: 'Zusammen sind wir <em>ziemlich toll.</em>', description: 'Ein paar völlig wissenschaftliche Fakten über uns.', stats: [{ icon: 'messages-square', value: 'Unzählige', label: 'Sprachnachrichten' }, { icon: 'sun', value: '100%', label: 'gute Laune mit dir' }, { icon: 'laugh', value: 'Unendlich', label: 'Insider-Witze' }, { icon: 'heart', value: 'Immer mehr', label: 'Gründe, dich zu lieben' }] },
     { type: 'love-notes', eyebrow: 'NUR FÜR DICH', title: 'Kleine Dinge, <em>die ich an dir liebe.</em>', description: 'Tippe jede Karte an und entdecke eine kleine Nachricht.' },
-    { type: 'place', eyebrow: 'EIN ORT FÜR IMMER', title: 'Hier möchten wir <em>wieder hin.</em>', description: 'Ein Ort, der noch auf ein gemeinsames Abenteuer wartet.', photo: 'assets/photos/return-place.jpg' },
+    { type: 'place', eyebrow: 'EIN ORT FÜR IMMER', title: 'Hier möchten wir <em>wieder hin.</em>', description: 'Ein Ort, der noch auf ein gemeinsames Abenteuer wartet.', photo: 'assets/photos/return-place.jpg', albumPhotoKey: 'assets/photos/album/iCloud Fotos/IMG_7085.PNG' },
     { type: 'soundtrack', eyebrow: 'UNSER SOUNDTRACK', title: 'Klingt nach <em>uns.</em>', description: 'Für den Song, bei dem du sofort an uns denken sollst.', songTitle: 'Unser Lied', artist: 'Dein Lieblingsmensch', coverLabel: '♪', playerLabel: 'Ein Song für uns zwei' },
     { type: 'finale', eyebrow: 'FROHE WEIHNACHTEN, MEIN HERZ', title: 'Mein schönstes Geschenk <em>bist du.</em>', message: 'Danke für jedes Lachen, jede Umarmung und all die kleinen Augenblicke. Ich freue mich auf alles, was wir noch zusammen erleben. Frohe Weihnachten, ich hab dich lieb.', buttonLabel: 'Überraschung starten' }
   ]
@@ -853,6 +853,7 @@ const ALBUM_DATA = {
     const wrappedSection = document.querySelector('#wrapped');
     const storyRoot = document.querySelector('#wrapped-story');
     let currentSlide = 0;
+    let wrappedAlbumPhotosPromise = null;
     let wrappedAudio = null;
     let wrappedMusicButton = null;
     let wrappedMusicStarted = false;
@@ -923,7 +924,14 @@ const ALBUM_DATA = {
       return `<div class="story-slide finale-slide">${eyebrow}<div class="finale-art">♥</div>${heading}<p class="finale-message">${escapeHtml(slide.message)}</p><div class="story-footer centered"><button class="story-surprise" type="button" data-story-surprise>${escapeHtml(slide.buttonLabel)} <i data-lucide="gift"></i></button></div></div>`;
     }
 
-    async function wrappedPhotoDateLabel(path) {
+    async function wrappedPhotoDateLabel(path, albumPhotoKey = '') {
+      if (albumPhotoKey) {
+        if (!wrappedAlbumPhotosPromise) wrappedAlbumPhotosPromise = getAlbumPhotos().catch(() => []);
+        const matchingAlbumPhoto = (await wrappedAlbumPhotosPromise).find((photo) => photo.key === albumPhotoKey || photo.src === albumPhotoKey);
+        if (matchingAlbumPhoto?.dateObject && Number.isFinite(matchingAlbumPhoto.dateObject.getTime())) {
+          return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(matchingAlbumPhoto.dateObject);
+        }
+      }
       const albumEntry = PHOTO_ALBUM_DATA.find((photo) => photo.src === path && photo.capturedAt);
       const albumDate = albumEntry?.capturedAt ? new Date(albumEntry.capturedAt) : null;
       if (albumDate && Number.isFinite(albumDate.getTime())) {
@@ -936,9 +944,18 @@ const ALBUM_DATA = {
         const tags = await window.exifr.parse(await response.blob());
         const value = tags?.DateTimeOriginal || tags?.CreateDate || tags?.ModifyDate;
         const date = value instanceof Date ? value : (value ? new Date(String(value).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')) : null);
-        return date && Number.isFinite(date.getTime())
-          ? new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
-          : '';
+        if (!date || !Number.isFinite(date.getTime())) return '';
+        if (!wrappedAlbumPhotosPromise) wrappedAlbumPhotosPromise = getAlbumPhotos().catch(() => []);
+        const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const linkedAlbumPhoto = (await wrappedAlbumPhotosPromise).find((photo) => {
+          if (!photo.capturedAt) return false;
+          const originalDate = new Date(photo.capturedAt);
+          return Number.isFinite(originalDate.getTime()) && `${originalDate.getFullYear()}-${originalDate.getMonth()}-${originalDate.getDate()}` === dayKey;
+        });
+        const displayDate = linkedAlbumPhoto?.dateObject && Number.isFinite(linkedAlbumPhoto.dateObject.getTime())
+          ? linkedAlbumPhoto.dateObject
+          : date;
+        return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(displayDate);
       } catch (_) { return ''; }
     }
 
@@ -997,6 +1014,7 @@ const ALBUM_DATA = {
 
     function renderWrappedSlide(index) {
       currentSlide = Math.max(0, Math.min(index, WRAPPED_DATA.slides.length - 1));
+      wrappedAlbumPhotosPromise = null;
       const slide = WRAPPED_DATA.slides[currentSlide];
       const stage = storyRoot.querySelector('#story-stage');
       stage.innerHTML = wrappedSlideMarkup(slide, currentSlide);
@@ -1007,13 +1025,13 @@ const ALBUM_DATA = {
       stage.querySelectorAll('.wrapped-memory-photo img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
       stage.querySelectorAll('.wrapped-first-photo-frame img, .wrapped-place-photo img').forEach((image) => image.addEventListener('error', () => { image.hidden = true; }, { once: true }));
       if (slide.type === 'first-photo') {
-        Promise.resolve(slide.photo.dateLabel || wrappedPhotoDateLabel(slide.photo.path)).then((dateLabel) => {
+        Promise.resolve(slide.photo.dateLabel || wrappedPhotoDateLabel(slide.photo.path, slide.photo.albumPhotoKey)).then((dateLabel) => {
           const date = stage.querySelector('[data-first-photo-date]');
           if (date?.isConnected) date.textContent = `${WRAPPED_DATA.dateCaptionPrefix} · ${dateLabel || WRAPPED_DATA.dateMissing}`;
         });
       }
       if (slide.type === 'place') {
-        Promise.resolve(slide.dateLabel || wrappedPhotoDateLabel(slide.photo)).then((dateLabel) => {
+        Promise.resolve(slide.dateLabel || wrappedPhotoDateLabel(slide.photo, slide.albumPhotoKey)).then((dateLabel) => {
           const date = stage.querySelector('[data-place-date]');
           if (date?.isConnected) date.textContent = `${WRAPPED_DATA.dateCaptionPrefix} · ${dateLabel || WRAPPED_DATA.dateMissing}`;
         });
@@ -1075,7 +1093,7 @@ const ALBUM_DATA = {
           const dateElement = stage.querySelector(`[data-polaroid-date="${photoIndex}"]`);
           const frontDateElement = stage.querySelector(`[data-polaroid-front-date="${photoIndex}"]`);
           if (!dateElement && !frontDateElement) return;
-          const dateLabel = photo.dateLabel || await wrappedPhotoDateLabel(photo.path);
+          const dateLabel = photo.dateLabel || await wrappedPhotoDateLabel(photo.path, photo.albumPhotoKey);
           const caption = `${WRAPPED_DATA.dateCaptionPrefix} · ${dateLabel || WRAPPED_DATA.dateMissing}`;
           if (dateElement?.isConnected) dateElement.textContent = caption;
           if (frontDateElement?.isConnected) frontDateElement.textContent = caption;
@@ -3652,6 +3670,9 @@ const ALBUM_DATA = {
     });
     albumSongRetry?.addEventListener('click', () => startAlbumSong());
     document.addEventListener('app:tabchange', (event) => {
+      if (event.detail.tab === 'wrapped' && ['first-photo', 'moments', 'place'].includes(WRAPPED_DATA.slides[currentSlide]?.type)) {
+        renderWrappedSlide(currentSlide);
+      }
       if (event.detail.tab === 'album' && ALBUM_SONG_DATA.startOnAlbumOpen && albumSongAudio && !albumSongActive) {
         startAlbumSong();
       } else if (event.detail.tab !== 'album' && albumSongActive && albumSongAudio) {
@@ -3714,6 +3735,7 @@ const ALBUM_DATA = {
         if (document.querySelector('#tresor')?.classList.contains('is-active')) renderTreasureCards();
         if (document.querySelector('#bucketlist')?.classList.contains('is-active')) renderBucketList();
         if (activeTab === 'karte') await refreshUploadedMapPhotos();
+        if (activeTab === 'wrapped' && ['first-photo', 'moments', 'place'].includes(WRAPPED_DATA.slides[currentSlide]?.type)) renderWrappedSlide(currentSlide);
       }
     }, 30000);
 
