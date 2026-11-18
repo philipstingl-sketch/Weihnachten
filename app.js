@@ -2064,6 +2064,59 @@ const ALBUM_DATA = {
       return Math.ceil((((thursday - yearStart) / 86400000) + 1) / 7);
     }
 
+    function albumOverviewMarkup(pages, currentIndex) {
+      const months = new Map();
+      let toolsPage = null;
+      pages.forEach((page, pageIndex) => {
+        if (page.type !== 'week') {
+          if (page.type === 'tools') toolsPage = { page, pageIndex };
+          return;
+        }
+        const monthKey = `${page.start.getFullYear()}-${String(page.start.getMonth() + 1).padStart(2, '0')}`;
+        if (!months.has(monthKey)) months.set(monthKey, { date: new Date(page.start.getFullYear(), page.start.getMonth(), 1), weeks: new Map() });
+        const month = months.get(monthKey);
+        const weekKey = localDayKey(page.start);
+        if (!month.weeks.has(weekKey)) month.weeks.set(weekKey, { weekNumber: page.weekNumber, start: page.start, end: page.end, totalCount: page.totalCount, pages: [] });
+        month.weeks.get(weekKey).pages.push({ page, pageIndex });
+      });
+
+      const monthMarkup = Array.from(months.values()).map((month) => {
+        const weeks = Array.from(month.weeks.values());
+        const monthLabel = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(month.date);
+        const weekMarkup = weeks.map((week) => week.pages.map(({ page, pageIndex }, partIndex) => {
+          const partLabel = week.pages.length > 1 ? ` · Doppelseite ${partIndex + 1}/${week.pages.length}` : '';
+          const range = `${albumDateLabel(week.start)} – ${albumDateLabel(week.end)}`;
+          const previews = page.photos.slice(0, 3).map((photo) => `<img src="${escapeHtml(photo.src)}" alt="" loading="lazy" decoding="async">`).join('');
+          const photoCount = week.pages.length > 1 ? `${page.photos.length} von ${week.totalCount} Fotos` : `${week.totalCount} ${week.totalCount === 1 ? 'Foto' : 'Fotos'}`;
+          return `<button class="album-overview-page${pageIndex === currentIndex ? ' is-current' : ''}" type="button" data-album-jump-page="${pageIndex}" aria-current="${pageIndex === currentIndex ? 'page' : 'false'}"><span class="album-overview-thumbs">${previews || '<i data-lucide="calendar-heart" aria-hidden="true"></i>'}</span><span class="album-overview-page-copy"><strong>Woche ${week.weekNumber}${partLabel}</strong><small>${escapeHtml(range)} · ${escapeHtml(photoCount)}</small></span><i class="album-overview-arrow" data-lucide="arrow-up-right" aria-hidden="true"></i></button>`;
+        }).join('')).join('');
+        return `<details class="album-overview-month"${weeks.some((week) => week.pages.some(({ pageIndex }) => pageIndex === currentIndex)) ? ' open' : ''}><summary><span>${escapeHtml(monthLabel)}</span><small>${weeks.length} ${weeks.length === 1 ? 'Woche' : 'Wochen'}</small></summary><div class="album-overview-weeks">${weekMarkup}</div></details>`;
+      }).join('');
+
+      const toolsMarkup = toolsPage
+        ? `<button class="album-overview-page album-overview-tools${toolsPage.pageIndex === currentIndex ? ' is-current' : ''}" type="button" data-album-jump-page="${toolsPage.pageIndex}" aria-current="${toolsPage.pageIndex === currentIndex ? 'page' : 'false'}"><span class="album-overview-thumbs"><i data-lucide="images" aria-hidden="true"></i></span><span class="album-overview-page-copy"><strong>Letzte Seite · Weitere Erinnerungen</strong><small>${toolsPage.page.totalCount ? `${toolsPage.page.totalCount} Fotos ohne Datum` : 'Album verwalten'}</small></span><i class="album-overview-arrow" data-lucide="arrow-up-right" aria-hidden="true"></i></button>`
+        : '';
+      return `<div class="album-overview"><button class="album-overview-toggle" type="button" data-album-overview-toggle aria-expanded="false" aria-controls="album-overview-panel"><i data-lucide="calendar-days" aria-hidden="true"></i><span>Monate &amp; Wochen</span><i class="album-overview-toggle-chevron" data-lucide="chevron-down" aria-hidden="true"></i></button><div class="album-overview-panel" id="album-overview-panel" data-album-overview-panel hidden>${monthMarkup || '<p class="album-overview-empty">Noch keine datierten Wochen im Album.</p>'}${toolsMarkup}</div></div>`;
+    }
+
+    function wireAlbumOverview(albumContent) {
+      const toggle = albumContent.querySelector('[data-album-overview-toggle]');
+      const panel = albumContent.querySelector('[data-album-overview-panel]');
+      toggle?.addEventListener('click', () => {
+        const open = panel.hidden;
+        panel.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.classList.toggle('is-open', open);
+        if (open) panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+      albumContent.querySelectorAll('[data-album-jump-page]').forEach((button) => button.addEventListener('click', () => {
+        albumPageIndex = Number(button.dataset.albumJumpPage);
+        albumTurnDirection = '';
+        renderAlbumPage();
+        document.querySelector('#main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+      }));
+    }
+
     function albumCardMarkup(photo, index, selectable) {
       const isVideo = photo.mediaType === 'video';
       const dateLabel = Number.isNaN(photo.dateObject.getTime()) ? '' : albumDateLabel(photo.dateObject);
@@ -2349,11 +2402,13 @@ const ALBUM_DATA = {
             '<div class="album-spread album-final-undated-spread">' + albumBookPageMarkup(leftPhotos, 'is-left', true) + albumBookPageMarkup(rightPhotos, 'is-right', true) + '</div>'
           : '<div class="album-empty album-tools-empty"><div><span class="album-empty-icon"><i data-lucide="images" aria-hidden="true"></i></span><h2 class="font-display">' + escapeHtml(ALBUM_DATA.emptyTitle) + '</h2><p>' + escapeHtml(ALBUM_DATA.emptyDescription) + '</p></div></div>';
         albumContent.innerHTML = '<article class="album-week-page album-tools-page"><header class="album-week-header"><div><span class="pill">LETZTE SEITE · ' + (finalPagePhotos.length ? 'BILDER OHNE DATUM' : 'ALBUM PFLEGEN') + '</span><h2 class="font-display">' + (finalPagePhotos.length ? escapeHtml(ALBUM_DATA.undatedPageLabel) : 'Album pflegen') + '</h2><span class="album-week-range">' + (finalPagePhotos.length ? escapeHtml(ALBUM_DATA.undatedLabel) + ' · Hier sammeln sich alle Bilder ohne Datum.' : 'Hier kannst du eure Fotos ergänzen oder einzelne Erinnerungen entfernen.') + '</span></div><span class="album-week-count">' + (finalPagePhotos.length ? finalPagePhotos.length + ' Fotos' : '<i data-lucide="heart" aria-hidden="true"></i>') + '</span></header>' +
+          albumOverviewMarkup(pages, albumPageIndex) +
           finalPhotoPages +
           '<div class="album-tools-paper"><div class="album-tools-slot" data-album-tools-slot></div></div>' +
           '<nav class="album-controls" aria-label="Albumseiten"><button class="album-page-button" type="button" data-album-prev>‹ ' + escapeHtml(ALBUM_DATA.previousLabel) + '</button>' +
           '<span class="album-page-indicator">' + (albumPageIndex + 1) + ' / ' + pages.length + '</span>' +
           '<button class="album-page-button" type="button" data-album-next disabled>' + escapeHtml(ALBUM_DATA.nextLabel) + ' ›</button></nav></article>';
+        wireAlbumOverview(albumContent);
         const toolsSlot = albumContent.querySelector('[data-album-tools-slot]');
         if (albumToolsPanel && toolsSlot) toolsSlot.append(albumToolsPanel);
         const finalPhotosByKey = new Map(albumPhotos.map((photo) => [photo.key, photo]));
@@ -2459,12 +2514,13 @@ const ALBUM_DATA = {
       albumContent.innerHTML = '<article class="album-week-page"><header class="album-week-header"><div><span class="pill">' + escapeHtml(pageMarker) + '</span>' +
         (isUndated ? '' : (page.totalCount > 8 ? '<span class="pill">DOPPELSEITE</span>' : '')) +
         '<h2 class="font-display">' + escapeHtml(pageHeading) + '</h2><span class="album-week-range">' + escapeHtml(isUndated ? ALBUM_DATA.undatedLabel : startText + ' – ' + endText) + '</span></div>' +
-        '<span class="album-week-count">' + page.totalCount + ' Fotos</span></header>' + batchForm +
+        '<span class="album-week-count">' + page.totalCount + ' Fotos</span></header>' + albumOverviewMarkup(pages, albumPageIndex) + batchForm +
         '<div class="album-spread">' + albumBookPageMarkup(leftPhotos, 'is-left', isUndated || albumLocationAssignMode) + albumBookPageMarkup(rightPhotos, 'is-right', isUndated || albumLocationAssignMode) + '</div>' +
         '<nav class="album-controls" aria-label="Albumseiten"><button class="album-page-button" type="button" data-album-prev ' + (albumPageIndex === 0 ? 'disabled' : '') + '>‹ ' + escapeHtml(ALBUM_DATA.previousLabel) + '</button>' +
         '<span class="album-page-indicator">' + (albumPageIndex + 1) + ' / ' + pages.length + '</span>' +
         '<button class="album-page-button" type="button" data-album-next ' + (albumPageIndex === pages.length - 1 ? 'disabled' : '') + '>' + escapeHtml(ALBUM_DATA.nextLabel) + ' ›</button></nav></article>';
 
+      wireAlbumOverview(albumContent);
       const photosBySrc = new Map(albumPhotos.map((photo) => [photo.key, photo]));
       albumContent.querySelectorAll('[data-open-photo]').forEach((button) => button.addEventListener('click', () => {
         const photo = photosBySrc.get(button.dataset.openPhoto);
